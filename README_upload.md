@@ -5,7 +5,7 @@
 - `index.html`：PC 演示入口，页面右下角有扫码体验按钮
 - `pc.html`：PC 在线监测大屏
 - `mobile.html`：手机扫码体验页
-- `qr.png`：指向 `https://fightingxgg.github.io/mobile.html` 的二维码
+- `qr.png`：指向 `https://fightingxgg.github.io/pc.html` 的二维码，与 PC 大屏保持一致
 - `.nojekyll`：让 GitHub Pages 原样发布静态文件
 
 上传后请确认 GitHub Pages 设置为：
