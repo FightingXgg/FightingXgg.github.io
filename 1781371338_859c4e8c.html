@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工业设备健康监测分析报告</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --danger-color: #e74c3c;
+            --bg-light: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bdc3c7;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #95a5a6;
+        }
+
+        /* Header & Hero */
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dashboard-header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==');
+            opacity: 0.3;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Cards */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .bg-soft-primary { background-color: rgba(52, 152, 219, 0.15); color: #3498db; }
+        .bg-soft-success { background-color: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+        .bg-soft-warning { background-color: rgba(241, 196, 15, 0.15); color: #f39c12; }
+        .bg-soft-danger { background-color: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+
+        /* Charts */
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .chart-title {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Insight Box */
+        .insight-box {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        .insight-box.danger {
+            background-color: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        /* Table */
+        .custom-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        }
+        .table thead th {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            font-weight: 500;
+        }
+        .badge-severity-0 { background-color: #e9ecef; color: #495057; }
+        .badge-severity-1 { background-color: #fff3cd; color: #856404; }
+        .badge-severity-2 { background-color: #ffeeba; color: #856404; border: 1px solid #ffc107; }
+        .badge-severity-3 { background-color: #f5c6cb; color: #721c24; }
+        .badge-severity-4 { background-color: #f8d7da; color: #721c24; border: 1px solid #dc3545; font-weight: bold;}
+
+        /* Animations */
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* Floating Action Button */
+        .fab-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 1000;
+            border: none;
+        }
+        .fab-btn:hover {
+            transform: scale(1.1) rotate(90deg);
+            background: #2980b9;
+        }
+
+        /* Print Styles */
+        @media print {
+            .no-print { display: none !important; }
+            .card { box-shadow: none; border: 1px solid #ddd; }
+            body { background: white; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+        <div class="container header-content">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-5 fw-bold mb-0"><i class="fas fa-industry me-3"></i>设备健康监测分析报告</h1>
+                    <p class="lead mb-0 opacity-75 mt-2">数据周期: 2025-02-01 | 设备总数: 7台 | 生成时间: <span id="current-time"></span></p>
+                </div>
+                <div class="col-md-4 text-end no-print">
+                    <button class="btn btn-light btn-lg shadow-sm fw-bold" onclick="window.print()">
+                        <i class="fas fa-print me-2"></i>导出报告
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mb-5">
+        
+        <!-- Executive Summary -->
+        <div class="row mb-4 fade-in-up">
+            <div class="col-12">
+                <div class="alert alert-primary d-flex align-items-center" role="alert">
+                    <i class="fas fa-info-circle fa-2x me-3"></i>
+                    <div>
+                        <strong>执行摘要：</strong> 本报告分析了7台关键设备（P-101至P-105, F-201, F-202）在2025年2月1日的运行状况。
+                        <strong>P-101</strong> 与 <strong>P-104</strong> 出现明显的振动超标及异常声响，需立即关注。
+                        <strong>F-201</strong> 振动值接近阈值，建议加强巡检。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-3 fade-in-up delay-1">
+                <div class="stat-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase fs-7 fw-bold">监测设备总数</h6>
+                            <h2 class="fw-bold mt-2 mb-0">7</h2>
+                        </div>
+                        <div class="stat-icon bg-soft-primary">
+                            <i class="fas fa-server"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-muted small">
+                        <span class="text-success"><i class="fas fa-check-circle"></i> 5台正常</span> | 
+                        <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> 2台异常</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 fade-in-up delay-2">
+                <div class="stat-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase fs-7 fw-bold">异常事件记录</h6>
+                            <h2 class="fw-bold mt-2 mb-0 text-danger">6</h2>
+                        </div>
+                        <div class="stat-icon bg-soft-danger">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-muted small">
+                        主要集中在 P-101 (4次) 和 P-104 (3次)
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 fade-in-up delay-3">
+                <div class="stat-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase fs-7 fw-bold">最高振动值</h6>
+                            <h2 class="fw-bold mt-2 mb-0">5.5 <span class="fs-6 text-muted">mm/s</span></h2>
+                        </div>
+                        <div class="stat-icon bg-soft-warning">
+                            <i class="fas fa-wave-square"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-muted small">
+                        设备: F-201 (13:00) | 阈值: 6.0
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 fade-in-up delay-4">
+                <div class="stat-card p-4">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase fs-7 fw-bold">最高温度</h6>
+                            <h2 class="fw-bold mt-2 mb-0">59.5 <span class="fs-6 text-muted">°C</span></h2>
+                        </div>
+                        <div class="stat-icon bg-soft-success">
+                            <i class="fas fa-thermometer-half"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-muted small">
+                        设备: F-201 (13:00)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Analysis Section -->
+        <div class="row">
+            <!-- Left Column: Charts -->
+            <div class="col-lg-8">
+                
+                <!-- Health Status Chart -->
+                <div class="chart-container fade-in-up delay-2">
+                    <div class="chart-title">
+                        <span><i class="fas fa-heartbeat me-2"></i>设备实时健康度 (振动最大值 vs 阈值)</span>
+                        <span class="badge bg-secondary">柱状图</span>
+                    </div>
+                    <canvas id="healthChart" height="200"></canvas>
+                    <div class="insight-box">
+                        <strong><i class="fas fa-lightbulb text-warning"></i> 洞察：</strong> 
+                        P-101 在 12:00-13:00 期间振动峰值达到 <strong>5.1</strong>，远超其 4.5 的阈值。P-104 在下午持续处于高位。相比之下，P-103 运行最为平稳。
+                    </div>
+                </div>
+
+                <!-- Trend Analysis -->
+                <div class="chart-container fade-in-up delay-3">
+                    <div class="chart-title">
+                        <span><i class="fas fa-chart-line me-2"></i>关键异常设备趋势分析 (P-101 & P-104)</span>
+                        <span class="badge bg-secondary">折线图</span>
+                    </div>
+                    <canvas id="trendChart" height="220"></canvas>
+                    <div class="insight-box danger">
+                        <strong><i class="fas fa-exclamation-circle text-danger"></i> 趋势预警：</strong> 
+                        P-101 在 13:00 达到峰值后有所回落，但 P-104 呈现持续上升趋势，从 08:00 的 3.9 升至 14:00 的 5.3，未出现明显回落迹象，恶化风险极高。
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Supporting Data -->
+            <div class="col-lg-4">
+                
+                <!-- Radar Chart: Multi-metric -->
+                <div class="chart-container fade-in-up delay-2">
+                    <div class="chart-title">
+                        <span><i class="fas fa-bullseye me-2"></i>设备综合状态雷达</span>
+                        <span class="badge bg-secondary">雷达图</span>
+                    </div>
+                    <canvas id="radarChart" height="250"></canvas>
+                    <div class="mt-3 small text-muted">
+                        基于平均振动、峰值振动、平均温度及异常频次综合评分。
+                    </div>
+                </div>
+
+                <!-- Anomaly List -->
+                <div class="chart-container fade-in-up delay-3">
+                    <div class="chart-title">
+                        <span><i class="fas fa-clipboard-list me-2"></i>异常事件时间线</span>
+                    </div>
+                    <div class="timeline">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>设备</th>
+                                        <th>备注</th>
+                                        <th>等级</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="anomalyTableBody">
+                                    <!-- JS populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Detailed Data Table -->
+        <div class="row mt-4 fade-in-up delay-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <div class="chart-title">
+                        <span><i class="fas fa-table me-2"></i>全量数据监控日志</span>
+                        <div class="btn-group btn-group-sm no-print" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" onclick="filterTable('all')">全部</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="filterTable('P-101')">P-101</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="filterTable('P-104')">P-104</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="filterTable('F-201')">F-201</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle" id="mainDataTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>设备编号</th>
+                                    <th>时间戳</th>
+                                    <th>振动值 (mm/s)</th>
+                                    <th>温度 (°C)</th>
+                                    <th>阈值</th>
+                                    <th>状态</th>
+                                    <th>操作员备注</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mainTableBody">
+                                <!-- JS populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="row mt-4 mb-5 fade-in-up delay-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm bg-white">
+                    <div class="card-header bg-white border-bottom-0 pt-4 ps-4">
+                        <h4 class="fw-bold text-primary"><i class="fas fa-tasks me-2"></i>维护建议与结论</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="fw-bold text-danger">紧急处理 (Priority 1)</h5>
+                                <ul class="list-group list-group-flush mb-4">
+                                    <li class="list-group-item"><i class="fas fa-wrench text-danger me-2"></i> <strong>P-101:</strong> 虽然13:00后数值回落，但12:00发生了"紧急检查"记录。建议立即安排停机检查轴承磨损情况。</li>
+                                    <li class="list-group-item"><i class="fas fa-wrench text-danger me-2"></i> <strong>P-104:</strong> 数据呈现单调递增趋势，且伴有连续异响。建议立即降低负载并检查对中情况。</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="fw-bold text-warning">预防性维护 (Priority 2)</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item"><i class="fas fa-eye text-warning me-2"></i> <strong>F-201:</strong> 振动值长时间维持在高位 (4.1-5.5)，接近阈值6.0。建议增加巡检频率，检查润滑状况。</li>
+                                    <li class="list-group-item"><i class="fas fa-check-circle text-success me-2"></i> <strong>P-102, P-103, F-202:</strong> 运行状态良好，保持当前维护计划。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="bg-dark text-white py-4 mt-auto">
+        <div class="container text-center">
+            <p class="mb-0">工业智能运维系统 &copy; 2025. Generated by AI Data Analyst.</p>
+        </div>
+    </footer>
+
+    <!-- Floating Button -->
+    <button class="fab-btn no-print" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="回到顶部">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <script>
+        // --- 1. Data Preparation ---
+        const rawData = [
+            {id:1, eq:'P-101', time:'2025-02-01 08:00:00', vib:3.2, temp:45.2, thr:4.5, note:'', sev:0},
+            {id:2, eq:'P-101', time:'2025-02-01 09:00:00', vib:3.5, temp:45.8, thr:4.5, note:'', sev:0},
+            {id:3, eq:'P-101', time:'2025-02-01 10:00:00', vib:3.8, temp:46.1, thr:4.5, note:'', sev:0},
+            {id:4, eq:'P-101', time:'2025-02-01 11:00:00', vib:4.2, temp:46.5, thr:4.5, note:'异响轻微', sev:1},
+            {id:5, eq:'P-101', time:'2025-02-01 12:00:00', vib:4.7, temp:47.0, thr:4.5, note:'异响明显', sev:2},
+            {id:6, eq:'P-101', time:'2025-02-01 13:00:00', vib:5.1, temp:48.2, thr:4.5, note:'紧急检查', sev:4},
+            {id:7, eq:'P-101', time:'2025-02-01 14:00:00', vib:4.9, temp:48.0, thr:4.5, note:'异响明显', sev:2},
+            {id:8, eq:'P-101', time:'2025-02-01 15:00:00', vib:4.6, temp:47.5, thr:4.5, note:'噪音增大', sev:3},
+            {id:9, eq:'P-102', time:'2025-02-01 08:00:00', vib:2.1, temp:38.5, thr:5.0, note:'', sev:0},
+            {id:10, eq:'P-102', time:'2025-02-01 09:00:00', vib:2.3, temp:39.0, thr:5.0, note:'', sev:0},
+            {id:11, eq:'P-102', time:'2025-02-01 10:00:00', vib:2.5, temp:39.4, thr:5.0, note:'', sev:0},
+            {id:12, eq:'P-102', time:'2025-02-01 11:00:00', vib:2.6, temp:40.2, thr:5.0, note:'', sev:0},
+            {id:13, eq:'P-102', time:'2025-02-01 12:00:00', vib:2.4, temp:39.8, thr:5.0, note:'', sev:0},
+            {id:14, eq:'P-102', time:'2025-02-01 13:00:00', vib:2.2, temp:39.5, thr:5.0, note:'', sev:0},
+            {id:15, eq:'P-102', time:'2025-02-01 14:00:00', vib:2.3, temp:39.3, thr:5.0, note:'', sev:0},
+            {id:16, eq:'P-102', time:'2025-02-01 15:00:00', vib:2.5, temp:39.6, thr:5.0, note:'', sev:0},
+            {id:17, eq:'F-201', time:'2025-02-01 08:00:00', vib:4.1, temp:55.0, thr:6.0, note:'', sev:0},
+            {id:18, eq:'F-201', time:'2025-02-01 09:00:00', vib:4.3, temp:55.8, thr:6.0, note:'', sev:0},
+            {id:19, eq:'F-201', time:'2025-02-01 10:00:00', vib:4.5, temp:56.2, thr:6.0, note:'', sev:0},
+            {id:20, eq:'F-201', time:'2025-02-01 11:00:00', vib:4.8, temp:57.1, thr:6.0, note:'', sev:0},
+            {id:21, eq:'F-201', time:'2025-02-01 12:00:00', vib:5.2, temp:58.0, thr:6.0, note:'', sev:0},
+            {id:22, eq:'F-201', time:'2025-02-01 13:00:00', vib:5.5, temp:59.5, thr:6.0, note:'', sev:0},
+            {id:23, eq:'F-201', time:'2025-02-01 14:00:00', vib:5.3, temp:59.0, thr:6.0, note:'', sev:0},
+            {id:24, eq:'F-201', time:'2025-02-01 15:00:00', vib:5.0, temp:58.2, thr:6.0, note:'', sev:0},
+            {id:25, eq:'F-202', time:'2025-02-01 08:00:00', vib:2.8, temp:42.0, thr:5.5, note:'', sev:0},
+            {id:26, eq:'F-202', time:'2025-02-01 09:00:00', vib:2.9, temp:42.5, thr:5.5, note:'', sev:0},
+            {id:27, eq:'F-202', time:'2025-02-01 10:00:00', vib:3.0, temp:43.0, thr:5.5, note:'', sev:0},
+            {id:28, eq:'F-202', time:'2025-02-01 11:00:00', vib:3.1, temp:43.2, thr:5.5, note:'', sev:0},
+            {id:29, eq:'F-202', time:'2025-02-01 12:00:00', vib:3.3, temp:43.8, thr:5.5, note:'', sev:0},
+            {id:30, eq:'F-202', time:'2025-02-01 13:00:00', vib:3.4, temp:44.5, thr:5.5, note:'', sev:0},
+            {id:31, eq:'F-202', time:'2025-02-01 14:00:00', vib:3.6, temp:45.0, thr:5.5, note:'', sev:0},
+            {id:32, eq:'F-202', time:'2025-02-01 15:00:00', vib:3.8, temp:45.6, thr:5.5, note:'', sev:0},
+            {id:33, eq:'P-103', time:'2025-02-01 08:00:00', vib:1.5, temp:30.2, thr:4.0, note:'', sev:0},
+            {id:34, eq:'P-103', time:'2025-02-01 09:00:00', vib:1.6, temp:30.5, thr:4.0, note:'', sev:0},
+            {id:35, eq:'P-103', time:'2025-02-01 10:00:00', vib:1.7, temp:31.0, thr:4.0, note:'', sev:0},
+            {id:36, eq:'P-103', time:'2025-02-01 11:00:00', vib:1.8, temp:31.2, thr:4.0, note:'', sev:0},
+            {id:37, eq:'P-103', time:'2025-02-01 12:00:00', vib:1.9, temp:31.5, thr:4.0, note:'', sev:0},
+            {id:38, eq:'P-103', time:'2025-02-01 13:00:00', vib:2.0, temp:32.0, thr:4.0, note:'', sev:0},
+            {id:39, eq:'P-103', time:'2025-02-01 14:00:00', vib:2.1, temp:32.3, thr:4.0, note:'', sev:0},
+            {id:40, eq:'P-103', time:'2025-02-01 15:00:00', vib:2.2, temp:32.5, thr:4.0, note:'', sev:0},
+            {id:41, eq:'P-104', time:'2025-02-01 08:00:00', vib:3.9, temp:50.0, thr:5.0, note:'', sev:0},
+            {id:42, eq:'P-104', time:'2025-02-01 09:00:00', vib:4.0, temp:50.5, thr:5.0, note:'', sev:0},
+            {id:43, eq:'P-104', time:'2025-02-01 10:00:00', vib:4.2, temp:51.2, thr:5.0, note:'', sev:0},
+            {id:44, eq:'P-104', time:'2025-02-01 11:00:00', vib:4.5, temp:52.0, thr:5.0, note:'', sev:0},
+            {id:45, eq:'P-104', time:'2025-02-01 12:00:00', vib:4.8, temp:53.1, thr:5.0, note:'异响轻微', sev:1},
+            {id:46, eq:'P-104', time:'2025-02-01 13:00:00', vib:5.1, temp:54.0, thr:5.0, note:'噪音增大', sev:3},
+            {id:47, eq:'P-104', time:'2025-02-01 14:00:00', vib:5.3, temp:54.8, thr:5.0, note:'异响明显', sev:2},
+            {id:48, eq:'P-104', time:'2025-02-01 15:00:00', vib:5.2, temp:54.5, thr:5.0, note:'异响明显', sev:2},
+            {id:49, eq:'P-105', time:'2025-02-01 08:00:00', vib:2.0, temp:33.0, thr:4.5, note:'', sev:0},
+            {id:50, eq:'P-105', time:'2025-02-01 09:00:00', vib:2.2, temp:33.5, thr:4.5, note:'', sev:0}
+        ];
+
+        // Set current time
+        document.getElementById('current-time').innerText = new Date().toLocaleString('zh-CN');
+
+        // --- 2. Data Processing for Charts ---
+        const equipmentList = [...new Set(rawData.map(d => d.eq))];
+        
+        // Helper: Get Max Vib per equipment
+        const getMaxVib = (eq) => Math.max(...rawData.filter(d => d.eq === eq).map(d => d.vib));
+        const getThreshold = (eq) => rawData.find(d => d.eq === eq).thr;
+        const getAvgTemp = (eq) => (rawData.filter(d => d.eq === eq).reduce((a,b)=>a+b.temp,0) / rawData.filter(d => d.eq === eq).length).toFixed(1);
+        const getAnomalyCount = (eq) => rawData.filter(d => d.eq === eq && d.sev > 0).length;
+
+        // --- 3. Chart Configurations ---
+
+        // Chart 1: Health Status (Bar Chart)
+        const ctxHealth = document.getElementById('healthChart').getContext('2d');
+        new Chart(ctxHealth, {
+            type: 'bar',
+            data: {
+                labels: equipmentList,
+                datasets: [
+                    {
+                        label: '最大振动值 (mm/s)',
+                        data: equipmentList.map(eq => getMaxVib(eq)),
+                        backgroundColor: equipmentList.map(eq => getMaxVib(eq) > getThreshold(eq) ? 'rgba(231, 76, 60, 0.7)' : 'rgba(52, 152, 219, 0.7)'),
+                        borderColor: equipmentList.map(eq => getMaxVib(eq) > getThreshold(eq) ? 'rgba(231, 76, 60, 1)' : 'rgba(52, 152, 219, 1)'),
+                        borderWidth: 1
+                    },
+                    {
+                        label: '报警阈值',
+                        data: equipmentList.map(eq => getThreshold(eq)),
+                        type: 'line',
+                        borderColor: '#f1c40f',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '振动 (mm/s)' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) label += ': ';
+                                if (context.parsed.y !== null) label += context.parsed.y;
+                                if(context.datasetIndex === 0) {
+                                    const eq = context.label;
+                                    const thr = getThreshold(eq);
+                                    const max = context.parsed.y;
+                                    if(max > thr) label += ' (超标!)';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Chart 2: Trend Analysis (Line Chart) - Focus on P-101 and P-104
+        const p101Data = rawData.filter(d => d.eq === 'P-101');
+        const p104Data = rawData.filter(d => d.eq === 'P-104');
+        const labelsTime = p101Data.map(d => d.time.split(' ')[1].substring(0,5)); // HH:MM
+
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: labelsTime,
+                datasets: [
+                    {
+                        label: 'P-101 振动',
+                        data: p101Data.map(d => d.vib),
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'P-104 振动',
+                        data: p104Data.map(d => d.vib),
+                        borderColor: '#e67e22',
+                        backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'P-101 阈值',
+                        data: Array(8).fill(4.5),
+                        borderColor: '#e74c3c',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'P-104 阈值',
+                        data: Array(8).fill(5.0),
+                        borderColor: '#e67e22',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    y: { title: { display: true, text: '振动值 (mm/s)' } }
+                }
+            }
+        });
+
+        // Chart 3: Radar Chart
+        const ctxRadar = document.getElementById('radarChart').getContext('2d');
+        // Normalize data for radar (0-10 scale approx)
+        // Metrics: Avg Vib (lower better), Peak Vib (lower better), Avg Temp (lower better), Anomaly Count (lower better)
+        // We invert logic for visualization: Higher score = Better Health? Or Higher score = Higher Risk?
+        // Let's do Risk Score (Higher = Worse)
+        
+        const getRadarData = (eq) => {
+            const d = rawData.filter(x => x.eq === eq);
+            const maxV = Math.max(...d.map(x=>x.vib));
+            const avgV = d.reduce((a,b)=>a+b.vib,0)/d.length;
+            const avgT = d.reduce((a,b)=>a+b.temp,0)/d.length;
+            const anom = d.filter(x=>x.sev>0).length;
+            // Simple normalization for demo
+            return [avgV*2, maxV*2, avgT/10, anom*3]; 
+        };
+
+        new Chart(ctxRadar, {
+            type: 'radar',
+            data: {
+                labels: ['平均振动风险', '峰值振动风险', '温度负荷', '异常频次'],
+                datasets: [
+                    {
+                        label: 'P-101 (高风险)',
+                        data: getRadarData('P-101'),
+                        fill: true,
+                        backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                        borderColor: 'rgb(231, 76, 60)',
+                        pointBackgroundColor: 'rgb(231, 76, 60)',
+                    },
+                    {
+                        label: 'P-103 (低风险)',
+                        data: getRadarData('P-103'),
+                        fill: true,
+                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                        borderColor: 'rgb(46, 204, 113)',
+                        pointBackgroundColor: 'rgb(46, 204, 113)',
+                    }
+                ]
+            },
+            options: {
+                elements: {
+                    line: { borderWidth: 3 }
+                },
+                scales: {
+                    r: {
+                        angleLines: { display: true },
+                        suggestedMin: 0,
+                        suggestedMax: 15
+                    }
+                }
+            }
+        });
+
+        // --- 4. Table Population ---
+        
+        const mainTableBody = document.getElementById('mainTableBody');
+        const anomalyTableBody = document.getElementById('anomalyTableBody');
+
+        function renderTables(filterEq = 'all') {
+            mainTableBody.innerHTML = '';
+            anomalyTableBody.innerHTML = '';
+            
+            let displayData = rawData;
+            if(filterEq !== 'all') {
+                displayData = rawData.filter(d => d.eq === filterEq);
+            }
+
+            displayData.forEach(row => {
+                // Main Table Row
+                const statusHtml = row.vib > row.thr 
+                    ? '<span class="badge bg-danger">超标</span>' 
+                    : '<span class="badge bg-success">正常</span>';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.id}</td>
+                    <td><strong>${row.eq}</strong></td>
+                    <td>${row.time}</td>
+                    <td class="${row.vib > row.thr ? 'text-danger fw-bold' : ''}">${row.vib}</td>
+                    <td>${row.temp}</td>
+                    <td>${row.thr}</td>
+                    <td>${statusHtml}</td>
+                    <td>${row.note ? row.note : '-'}</td>
+                `;
+                mainTableBody.appendChild(tr);
+
+                // Anomaly Table Row (Only if severity > 0)
+                if(row.sev > 0) {
+                    const trAnom = document.createElement('tr');
+                    trAnom.innerHTML = `
+                        <td>${row.time.split(' ')[1].substring(0,5)}</td>
+                        <td>${row.eq}</td>
+                        <td>${row.note}</td>
+                        <td><span class="badge badge-severity-${row.sev}">${row.sev}</span></td>
+                    `;
+                    anomalyTableBody.appendChild(trAnom);
+                }
+            });
+        }
+
+        function filterTable(eq) {
+            // Update button states
+            const buttons = document.querySelectorAll('.btn-group .btn');
+            buttons.forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            renderTables(eq);
+        }
+
+        // Initial Render
+        renderTables();
+
+    </script>
+</body>
+</html>
