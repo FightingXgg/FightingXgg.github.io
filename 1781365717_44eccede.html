@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备健康监测与预测性维护分析报告</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#1e293b',
+                            900: '#0f172a',
+                        },
+                        brand: {
+                            blue: '#3b82f6',
+                            teal: '#14b8a6',
+                            danger: '#ef4444',
+                            warning: '#f59e0b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover, .nav-link.active {
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+            border-right: 3px solid #38bdf8;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="font-sans antialiased h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex-shrink-0 hidden md:flex flex-col justify-between">
+        <div>
+            <div class="h-16 flex items-center px-6 border-b border-slate-800">
+                <i class="fa-solid fa-industry text-brand-teal text-2xl mr-3"></i>
+                <span class="text-xl font-bold tracking-wide text-white">PredMaint<span class="text-brand-teal">AI</span></span>
+            </div>
+            <nav class="mt-6 px-2 space-y-1">
+                <a href="#overview" class="nav-link active flex items-center px-4 py-3 text-sm font-medium rounded-md text-slate-300 group">
+                    <i class="fa-solid fa-chart-pie w-6 text-center mr-2"></i>
+                    仪表盘概览
+                </a>
+                <a href="#trends" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-md text-slate-300 group">
+                    <i class="fa-solid fa-wave-square w-6 text-center mr-2"></i>
+                    趋势分析
+                </a>
+                <a href="#anomalies" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-md text-slate-300 group">
+                    <i class="fa-solid fa-triangle-exclamation w-6 text-center mr-2"></i>
+                    异常预警
+                </a>
+                <a href="#recommendations" class="nav-link flex items-center px-4 py-3 text-sm font-medium rounded-md text-slate-300 group">
+                    <i class="fa-solid fa-clipboard-check w-6 text-center mr-2"></i>
+                    维护建议
+                </a>
+            </nav>
+        </div>
+        <div class="p-4 border-t border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-blue to-brand-teal flex items-center justify-center text-white font-bold text-xs">
+                    DA
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-white">数据分析员</p>
+                    <p class="text-xs text-slate-500">在线</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden relative">
+        <header class="h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-6 z-10">
+            <h1 class="text-lg font-semibold text-white">设备健康监测报告 - <span class="text-slate-400 text-sm font-normal">2025 年 2 月 1 日 (08:00 - 15:00)</span></h1>
+            <div class="flex items-center gap-4">
+                <button class="p-2 text-slate-400 hover:text-white transition-colors"><i class="fa-solid fa-bell"></i></button>
+                <button class="bg-brand-blue hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-download mr-2"></i>导出报告
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth" id="main-scroll">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="glass-panel p-5 animate-fade-in" style="animation-delay: 0.1s;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium">监测设备总数</p>
+                            <h3 class="text-3xl font-bold text-white mt-1" id="total-devices">0</h3>
+                        </div>
+                        <div class="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                            <i class="fa-solid fa-server"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center text-xs text-slate-400">
+                        <span class="text-emerald-400 font-medium flex items-center mr-2"><i class="fa-solid fa-check mr-1"></i> 运行中</span>
+                        所有设备在线
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 animate-fade-in" style="animation-delay: 0.2s;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium">异常预警事件</p>
+                            <h3 class="text-3xl font-bold text-white mt-1" id="alert-count">0</h3>
+                        </div>
+                        <div class="p-2 bg-red-500/10 rounded-lg text-red-400">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex items-center text-xs text-slate-400">
+                        <span class="text-red-400 font-medium flex items-center mr-2"><i class="fa-solid fa-arrow-up mr-1"></i> 高风险</span>
+                        P-101, P-104
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 animate-fade-in" style="animation-delay: 0.3s;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium">平均温度 (°C)</p>
+                            <h3 class="text-3xl font-bold text-white mt-1" id="avg-temp">0</h3>
+                        </div>
+                        <div class="p-2 bg-orange-500/10 rounded-lg text-orange-400">
+                            <i class="fa-solid fa-temperature-half"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 w-full bg-slate-700 rounded-full h-1.5">
+                        <div class="bg-orange-400 h-1.5 rounded-full" style="width: 65%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 animate-fade-in" style="animation-delay: 0.4s;">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-slate-400 text-sm font-medium">平均振动 (mm/s)</p>
+                            <h3 class="text-3xl font-bold text-white mt-1" id="avg-vib">0</h3>
+                        </div>
+                        <div class="p-2 bg-purple-500/10 rounded-lg text-purple-400">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                    </div>
+                    <div class="mt-4 w-full bg-slate-700 rounded-full h-1.5">
+                        <div class="bg-purple-400 h-1.5 rounded-full" style="width: 45%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="trends" class="glass-panel p-6 animate-fade-in" style="animation-delay: 0.5s;">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">全厂设备运行趋势分析</h2>
+                        <p class="text-sm text-slate-400">振动值 (Vibration) vs 报警阈值 (Threshold)</p>
+                    </div>
+                    <div class="flex gap-2 mt-4 md:mt-0">
+                        <span class="flex items-center text-xs text-slate-400"><span class="w-3 h-3 rounded-full bg-blue-500 mr-1"></span> 正常</span>
+                        <span class="flex items-center text-xs text-slate-400"><span class="w-3 h-3 rounded-full bg-red-500 mr-1"></span> 超标</span>
+                    </div>
+                </div>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="mainTrendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <div id="anomalies" class="glass-panel p-6 lg:col-span-1 animate-fade-in" style="animation-delay: 0.6s;">
+                    <h2 class="text-lg font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-triangle-exclamation text-brand-warning mr-2"></i> 异常事件日志
+                    </h2>
+                    <div class="overflow-y-auto h-[350px] pr-2 space-y-3" id="anomaly-list">
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 lg:col-span-2 animate-fade-in" style="animation-delay: 0.7s;">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-white">设备状态热力图 (15:00 快照)</h2>
+                        <button class="text-xs text-brand-teal hover:text-teal-300">查看历史 &rarr;</button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="status-grid">
+                    </div>
+                </div>
+            </div>
+
+            <div id="recommendations" class="glass-panel p-6 animate-fade-in" style="animation-delay: 0.8s;">
+                <h2 class="text-xl font-bold text-white mb-6">AI 维护建议与结论</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="flex items-start p-4 bg-slate-800/50 rounded-lg border-l-4 border-red-500">
+                            <div class="flex-1">
+                                <h4 class="text-white font-semibold">紧急：P-101 泵体检查</h4>
+                                <p class="text-sm text-slate-400 mt-1">振动值在 13:00 达到峰值 5.1，远超阈值 4.5。伴随温度飙升至 48.2°C。建议立即停机检查轴承磨损情况。</p>
+                            </div>
+                            <span class="px-2 py-1 bg-red-500/20 text-red-400 text-xs rounded font-bold">立即执行</span>
+                        </div>
+                        <div class="flex items-start p-4 bg-slate-800/50 rounded-lg border-l-4 border-orange-500">
+                            <div class="flex-1">
+                                <h4 class="text-white font-semibold">警告：P-104 风扇叶片</h4>
+                                <p class="text-sm text-slate-400 mt-1">持续异响与振动上升趋势。虽然未达紧急停机标准，但应在本周内安排预防性维护。</p>
+                            </div>
+                            <span class="px-2 py-1 bg-orange-500/20 text-orange-400 text-xs rounded font-bold">本周内</span>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex items-start p-4 bg-slate-800/50 rounded-lg border-l-4 border-blue-500">
+                            <div class="flex-1">
+                                <h4 class="text-white font-semibold">观察：F-201 运行状态</h4>
+                                <p class="text-sm text-slate-400 mt-1">在 12:00-13:00 期间出现短暂波动，但后续已回落。建议增加监控频率，确认是否为偶发性负载波动。</p>
+                            </div>
+                            <span class="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded font-bold">持续监控</span>
+                        </div>
+                        <div class="flex items-start p-4 bg-slate-800/50 rounded-lg border-l-4 border-emerald-500">
+                            <div class="flex-1">
+                                <h4 class="text-white font-semibold">正常：P-102, P-103</h4>
+                                <p class="text-sm text-slate-400 mt-1">运行平稳，各项指标均在安全范围内。保持现有维护周期即可。</p>
+                            </div>
+                            <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded font-bold">无需操作</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="text-center text-slate-600 text-sm py-6">
+                 工业设备智能监测中心 | 系统版本 v2.4.0
+            </footer>
+        </div>
+    </main>
+
+    <script>
+        const rawCSV = `record_id,equipment_id,timestamp,vibration_value,temperature,alarm_threshold,operator_notes,note_severity
+1,P-101,2025-02-01 08:00:00,3.2,45.2,4.5,,0
+6,P-101,2025-02-01 13:00:00,5.1,48.2,4.5，紧急检查，4`;
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const result = [];
+            for(let i=1; i<lines.length; i++) {
+                const obj = {};
+                const currentline = lines[i].split(',');
+                headers.forEach((header, index) => {
+                    let val = currentline[index];
+                    if(!isNaN(val) && val !== '') val = Number(val);
+                    obj[header] = val;
+                });
+                result.push(obj);
+            }
+            return result;
+        }
+
+        const data = parseCSV(rawCSV);
+        const devices = [...new Set(data.map(d => d.equipment_id))];
+        const timeLabels = [...new Set(data.map(d => d.timestamp.split(' ')[1]))];
+        
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+        
+        const ctxTrend = document.getElementById('mainTrendChart').getContext('2d');
+        
+        new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    label: 'Vibration',
+                    data: data.map(r => r.vibration_value),
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    </script>
+</body>
+</html>
