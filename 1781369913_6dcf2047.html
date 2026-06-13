@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备运行状态智能分析报告</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: '#0f172a',
+                        card: '#1e293b',
+                        accent: '#38bdf8',
+                        danger: '#ef4444',
+                        warning: '#f59e0b',
+                        success: '#10b981'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .nav-item.active {
+            background-color: #38bdf8;
+            color: #0f172a;
+            font-weight: bold;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-64 bg-card border-r border-gray-700 flex-shrink-0 flex flex-col h-screen sticky top-0 z-50">
+        <div class="p-6 flex items-center gap-3 border-b border-gray-700">
+            <div class="w-10 h-10 rounded-lg bg-accent flex items-center justify-center text-dark text-xl">
+                <i class="fa-solid fa-industry"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight">智维工业</h1>
+                <p class="text-xs text-gray-400">设备健康管理系统</p>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 space-y-2">
+            <a href="#dashboard" class="nav-item active flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">
+                <i class="fa-solid fa-chart-line w-5"></i> 仪表盘概览
+            </a>
+            <a href="#equipment-analysis" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">
+                <i class="fa-solid fa-microchip w-5"></i> 设备详细分析
+            </a>
+            <a href="#trends" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">
+                <i class="fa-solid fa-arrow-trend-up w-5"></i> 趋势与预测
+            </a>
+            <a href="#alerts" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">
+                <i class="fa-solid fa-triangle-exclamation w-5"></i> 异常警报日志
+            </a>
+            <a href="#recommendations" class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors">
+                <i class="fa-solid fa-clipboard-check w-5"></i> 维护建议
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-700">
+            <div class="bg-gray-800 rounded-lg p-4">
+                <p class="text-xs text-gray-400 mb-1">系统状态</p>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+                    <span class="text-sm font-semibold">实时监控中</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 md:p-8 overflow-y-auto h-screen scroll-smooth">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-white">设备运行状态分析报告</h2>
+                <p class="text-gray-400 mt-1">数据周期: 2025-02-01 08:00 - 15:00</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.print()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors">
+                    <i class="fa-solid fa-print mr-2"></i> 导出报告
+                </button>
+                <div class="px-4 py-2 bg-accent/10 border border-accent/20 text-accent rounded-lg text-sm font-medium">
+                    <i class="fa-regular fa-clock mr-2"></i> <span id="current-time">--:--:--</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Section 1: Executive Summary (KPIs) -->
+        <section id="dashboard" class="mb-10">
+            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high text-accent"></i> 执行摘要与关键指标
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <!-- KPI Card 1 -->
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-accent">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">监控设备总数</p>
+                            <h4 class="text-3xl font-bold mt-1" id="total-equipment">0</h4>
+                        </div>
+                        <div class="p-2 bg-accent/10 rounded-lg text-accent">
+                            <i class="fa-solid fa-server"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Card 2 -->
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-danger">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">严重异常事件</p>
+                            <h4 class="text-3xl font-bold mt-1 text-danger" id="critical-count">0</h4>
+                        </div>
+                        <div class="p-2 bg-danger/10 rounded-lg text-danger">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">需立即处理</p>
+                </div>
+
+                <!-- KPI Card 3 -->
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-warning">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">平均振动值 (mm/s)</p>
+                            <h4 class="text-3xl font-bold mt-1" id="avg-vibration">0.0</h4>
+                        </div>
+                        <div class="p-2 bg-warning/10 rounded-lg text-warning">
+                            <i class="fa-solid fa-wave-square"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Card 4 -->
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-success">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-gray-400 text-sm">设备健康评分</p>
+                            <h4 class="text-3xl font-bold mt-1 text-success" id="health-score">92</h4>
+                        </div>
+                        <div class="p-2 bg-success/10 rounded-lg text-success">
+                            <i class="fa-solid fa-heart-pulse"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">基于阈值偏离度计算</p>
+                </div>
+            </div>
+
+            <!-- Main Overview Chart -->
+            <div class="glass-panel p-6 rounded-xl">
+                <h4 class="text-lg font-semibold mb-4">全厂设备振动趋势对比</h4>
+                <div class="chart-container" style="height: 400px;">
+                    <canvas id="mainTrendChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Detailed Analysis -->
+        <section id="equipment-analysis" class="mb-10">
+            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass-chart text-accent"></i> 设备详细分析
+            </h3>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left: Equipment Selector & Stats -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h4 class="font-semibold mb-4">设备列表</h4>
+                        <div class="space-y-2" id="equipment-list">
+                            <!-- Generated via JS -->
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h4 class="font-semibold mb-4">当前选中: <span id="selected-eq-name" class="text-accent">P-101</span></h4>
+                        <div class="space-y-4">
+                            <div class="flex justify-between border-b border-gray-700 pb-2">
+                                <span class="text-gray-400">最高振动</span>
+                                <span class="font-mono font-bold" id="stat-max-vib">--</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-700 pb-2">
+                                <span class="text-gray-400">平均温度</span>
+                                <span class="font-mono font-bold" id="stat-avg-temp">--</span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-700 pb-2">
+                                <span class="text-gray-400">报警阈值</span>
+                                <span class="font-mono font-bold text-warning" id="stat-threshold">--</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">状态评估</span>
+                                <span class="px-2 py-1 rounded text-xs font-bold bg-gray-700" id="stat-status">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Detailed Charts -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h4 class="font-semibold mb-4">振动与阈值分析</h4>
+                        <div class="chart-container">
+                            <canvas id="detailVibrationChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h4 class="font-semibold mb-4">温度变化趋势</h4>
+                        <div class="chart-container">
+                            <canvas id="detailTempChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Alerts & Logs -->
+        <section id="alerts" class="mb-10">
+            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-accent"></i> 异常警报与操作日志
+            </h3>
+            
+            <div class="glass-panel rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-800 text-gray-400 text-sm uppercase tracking-wider">
+                                <th class="p-4 font-medium">时间</th>
+                                <th class="p-4 font-medium">设备ID</th>
+                                <th class="p-4 font-medium">振动值</th>
+                                <th class="p-4 font-medium">温度</th>
+                                <th class="p-4 font-medium">操作备注</th>
+                                <th class="p-4 font-medium">严重等级</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-table-body" class="text-sm divide-y divide-gray-700">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Recommendations -->
+        <section id="recommendations" class="mb-10">
+            <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-user-doctor text-accent"></i> 智能维护建议
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-danger">
+                    <div class="flex items-start gap-4">
+                        <div class="bg-danger/20 p-3 rounded-full text-danger">
+                            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-bold text-white mb-2">立即处理：P-101 泵组</h4>
+                            <p class="text-gray-300 text-sm leading-relaxed">
+                                该设备在 13:00 达到振动峰值 5.1 mm/s，远超 4.5 阈值。操作员记录"紧急检查"。建议立即停机进行轴承润滑检查或动平衡校正，防止轴系损坏。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-warning">
+                    <div class="flex items-start gap-4">
+                        <div class="bg-warning/20 p-3 rounded-full text-warning">
+                            <i class="fa-solid fa-eye text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-bold text-white mb-2">密切关注：F-201 风机</h4>
+                            <p class="text-gray-300 text-sm leading-relaxed">
+                                虽然未超过 6.0 阈值，但振动呈现持续上升趋势（4.1 -> 5.5）。温度同步升高至 59.5°C。建议缩短巡检周期至每2小时一次，并准备备件。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-warning">
+                    <div class="flex items-start gap-4">
+                        <div class="bg-warning/20 p-3 rounded-full text-warning">
+                            <i class="fa-solid fa-ear-listen text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-bold text-white mb-2">声学异常：P-104 压缩机</h4>
+                            <p class="text-gray-300 text-sm leading-relaxed">
+                                出现"异响轻微"及"噪音增大"记录，且振动值在 12:00 后突破阈值。建议检查入口过滤器是否堵塞，或检查阀门开度是否正确。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl border-l-4 border-success">
+                    <div class="flex items-start gap-4">
+                        <div class="bg-success/20 p-3 rounded-full text-success">
+                            <i class="fa-solid fa-check-circle text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-bold text-white mb-2">运行良好：P-102, P-103</h4>
+                            <p class="text-gray-300 text-sm leading-relaxed">
+                                这些设备运行平稳，振动和温度均在安全范围内。建议维持当前维护计划。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-gray-500 text-sm py-8 border-t border-gray-800">
+            <p> 智维工业数据分析中心 | 内部机密资料</p>
+        </footer>
+
+    </main>
+
+    <!-- Application Logic -->
+    <script>
+        // 1. Data Parsing
+        const csvData = `record_id,equipment_id,timestamp,vibration_value,temperature,alarm_threshold,operator_notes,note_severity
+1,P-101,2025-02-01 08:00:00,3.2,45.2,4.5,,0
+2,P-101,2025-02-01 09:00:00,3.5,45.8,4.5,,0
+3,P-101,2025-02-01 10:00:00,3.8,46.1,4.5,,0
+4,P-101,2025-02-01 11:00:00,4.2,46.5,4.5,异响轻微,1
+5,P-101,2025-02-01 12:00:00,4.7,47.0,4.5,异响明显,2
+6,P-101,2025-02-01 13:00:00,5.1,48.2,4.5,紧急检查,4
+7,P-101,2025-02-01 14:00:00,4.9,48.0,4.5,异响明显,2
+8,P-101,2025-02-01 15:00:00,4.6,47.5,4.5,噪音增大,3
+9,P-102,2025-02-01 08:00:00,2.1,38.5,5.0,,0
+10,P-102,2025-02-01 09:00:00,2.3,39.0,5.0,,0
+11,P-102,2025-02-01 10:00:00,2.5,39.4,5.0,,0
+12,P-102,2025-02-01 11:00:00,2.6,40.2,5.0,,0
+13,P-102,2025-02-01 12:00:00,2.4,39.8,5.0,,0
+14,P-102,2025-02-01 13:00:00,2.2,39.5,5.0,,0
+15,P-102,2025-02-01 14:00:00,2.3,39.3,5.0,,0
+16,P-102,2025-02-01 15:00:00,2.5,39.6,5.0,,0
+17,F-201,2025-02-01 08:00:00,4.1,55.0,6.0,,0
+18,F-201,2025-02-01 09:00:00,4.3,55.8,6.0,,0
+19,F-201,2025-02-01 10:00:00,4.5,56.2,6.0,,0
+20,F-201,2025-02-01 11:00:00,4.8,57.1,6.0,,0
+21,F-201,2025-02-01 12:00:00,5.2,58.0,6.0,,0
+22,F-201,2025-02-01 13:00:00,5.5,59.5,6.0,,0
+23,F-201,2025-02-01 14:00:00,5.3,59.0,6.0,,0
+24,F-201,2025-02-01 15:00:00,5.0,58.2,6.0,,0
+25,F-202,2025-02-01 08:00:00,2.8,42.0,5.5,,0
+26,F-202,2025-02-01 09:00:00,2.9,42.5,5.5,,0
+27,F-202,2025-02-01 10:00:00,3.0,43.0,5.5,,0
+28,F-202,2025-02-01 11:00:00,3.1,43.2,5.5,,0
+29,F-202,2025-02-01 12:00:00,3.3,43.8,5.5,,0
+30,F-202,2025-02-01 13:00:00,3.4,44.5,5.5,,0
+31,F-202,2025-02-01 14:00:00,3.6,45.0,5.5,,0
+32,F-202,2025-02-01 15:00:00,3.8,45.6,5.5,,0
+33,P-103,2025-02-01 08:00:00,1.5,30.2,4.0,,0
+34,P-103,2025-02-01 09:00:00,1.6,30.5,4.0,,0
+35,P-103,2025-02-01 10:00:00,1.7,31.0,4.0,,0
+36,P-103,2025-02-01 11:00:00,1.8,31.2,4.0,,0
+37,P-103,2025-02-01 12:00:00,1.9,31.5,4.0,,0
+38,P-103,2025-02-01 13:00:00,2.0,32.0,4.0,,0
+39,P-103,2025-02-01 14:00:00,2.1,32.3,4.0,,0
+40,P-103,2025-02-01 15:00:00,2.2,32.5,4.0,,0
+41,P-104,2025-02-01 08:00:00,3.9,50.0,5.0,,0
+42,P-104,2025-02-01 09:00:00,4.0,50.5,5.0,,0
+43,P-104,2025-02-01 10:00:00,4.2,51.2,5.0,,0
+44,P-104,2025-02-01 11:00:00,4.5,52.0,5.0,,0
+45,P-104,2025-02-01 12:00:00,4.8,53.1,5.0,异响轻微,1
+46,P-104,2025-02-01 13:00:00,5.1,54.0,5.0,噪音增大,3
+47,P-104,2025-02-01 14:00:00,5.3,54.8,5.0,异响明显,2
+48,P-104,2025-02-01 15:00:00,5.2,54.5,5.0,异响明显,2
+49,P-105,2025-02-01 08:00:00,2.0,33.0,4.5,,0
+50,P-105,2025-02-01 09:00:00,2.2,33.5,4.5,,0`;
+
+        // Parse CSV
+        const rows = csvData.trim().split('\n').slice(1);
+        const data = rows.map(row => {
+            const cols = row.split(',');
+            return {
+                record_id: parseInt(cols[0]),
+                equipment_id: cols[1],
+                timestamp: cols[2],
+                vibration: parseFloat(cols[3]),
+                temperature: parseFloat(cols[4]),
+                threshold: parseFloat(cols[5]),
+                notes: cols[6],
+                severity: parseInt(cols[7])
+            };
+        });
+
+        // Group by Equipment
+        const equipmentGroups = {};
+        data.forEach(d => {
+            if (!equipmentGroups[d.equipment_id]) {
+                equipmentGroups[d.equipment_id] = [];
+            }
+            equipmentGroups[d.equipment_id].push(d);
+        });
+
+        const equipmentIds = Object.keys(equipmentGroups);
+        let currentEquipment = equipmentIds[0];
+
+        // 2. Initialize Dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            calculateKPIs();
+            renderEquipmentList();
+            renderMainChart();
+            renderDetailCharts(currentEquipment);
+            renderAlertsTable();
+            
+            // Navigation Logic
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active', 'bg-accent', 'text-dark'));
+                    document.querySelectorAll('.nav-item').forEach(n => n.classList.add('text-gray-300'));
+                    
+                    item.classList.add('active');
+                    item.classList.remove('text-gray-300');
+                    
+                    const target = item.getAttribute('href');
+                    document.querySelector(target).scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        });
+
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').innerText = now.toLocaleTimeString('zh-CN');
+        }
+
+        function calculateKPIs() {
+            document.getElementById('total-equipment').innerText = equipmentIds.length;
+            
+            let totalVib = 0;
+            let count = 0;
+            let criticalCount = 0;
+            let totalSeverity = 0;
+            let maxSeverity = 0;
+
+            data.forEach(d => {
+                totalVib += d.vibration;
+                count++;
+                if (d.severity > 0) criticalCount++;
+                if (d.severity > maxSeverity) maxSeverity = d.severity;
+            });
+
+            const avgVib = (totalVib / count).toFixed(2);
+            document.getElementById('avg-vibration').innerText = avgVib;
+            document.getElementById('critical-count').innerText = criticalCount;
+
+            // Simple Health Score Logic: 100 - (maxSeverity * 10) - (avgVib deviation)
+            // Just a simulation for demo
+            let health = 100;
+            if(maxSeverity >= 4) health = 60;
+            else if(maxSeverity >= 2) health = 80;
+            
+            const healthEl = document.getElementById('health-score');
+            healthEl.innerText = health;
+            if(health < 70) healthEl.className = "text-3xl font-bold mt-1 text-danger";
+            else if(health < 90) healthEl.className = "text-3xl font-bold mt-1 text-warning";
+        }
+
+        // 3. Render Equipment List
+        function renderEquipmentList() {
+            const list = document.getElementById('equipment-list');
+            list.innerHTML = '';
+            
+            equipmentIds.forEach(id => {
+                const eqData = equipmentGroups[id];
+                const maxVib = Math.max(...eqData.map(d => d.vibration));
+                const threshold = eqData[0].threshold;
+                const isAlarm = maxVib > threshold;
+                
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left px-4 py-3 rounded-lg mb-2 flex justify-between items-center transition-all ${id === currentEquipment ? 'bg-accent text-dark font-bold' : 'bg-gray-800 hover:bg-gray-700 text-gray-300'}`;
+                btn.innerHTML = `
+                    <span>${id}</span>
+                    ${isAlarm ? '<i class="fa-solid fa-circle-exclamation text-danger"></i>' : '<i class="fa-solid fa-check text-success"></i>'}
+                `;
+                btn.onclick = () => {
+                    currentEquipment = id;
+                    renderEquipmentList(); // Re-render to update active state
+                    renderDetailCharts(id);
+                };
+                list.appendChild(btn);
+            });
+        }
+
+        // 4. Charts Configuration
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        let mainChartInstance = null;
+        let vibChartInstance = null;
+        let tempChartInstance = null;
+
+        function renderMainChart() {
+            const ctx = document.getElementById('mainTrendChart').getContext('2d');
+            
+            const datasets = equipmentIds.map((id, index) => {
+                const eqData = equipmentGroups[id];
+                // Generate colors
+                const hue = (index * 360 / equipmentIds.length) % 360;
+                const color = `hsl(${hue}, 70%, 60%)`;
+                
+                return {
+                    label: id,
+                    data: eqData.map(d => d.vibration),
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 3
+                };
+            });
+
+            const labels = equipmentGroups[equipmentIds[0]].map(d => d.timestamp.split(' ')[1].substring(0,5)); // HH:MM
+
+            if(mainChartInstance) mainChartInstance.destroy();
+
+            mainChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: '振动值 (mm/s)' },
+                            grid: { color: '#1e293b' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderDetailCharts(equipmentId) {
+            const eqData = equipmentGroups[equipmentId];
+            const labels = eqData.map(d => d.timestamp.split(' ')[1].substring(0,5));
+            const vibData = eqData.map(d => d.vibration);
+            const tempData = eqData.map(d => d.temperature);
+            const threshold = eqData[0].threshold;
+
+            // Update Stats Panel
+            document.getElementById('selected-eq-name').innerText = equipmentId;
+            document.getElementById('stat-max-vib').innerText = Math.max(...vibData).toFixed(1);
+            document.getElementById('stat-avg-temp').innerText = (tempData.reduce((a,b)=>a+b,0)/tempData.length).toFixed(1) + ' °C';
+            document.getElementById('stat-threshold').innerText = threshold;
+            
+            const maxVib = Math.max(...vibData);
+            const statusEl = document.getElementById('stat-status');
+            if(maxVib > threshold) {
+                statusEl.innerText = "异常 (Alarm)";
+                statusEl.className = "px-2 py-1 rounded text-xs font-bold bg-danger text-white";
+            } else if (maxVib > threshold * 0.9) {
+                statusEl.innerText = "警告 (Warning)";
+                statusEl.className = "px-2 py-1 rounded text-xs font-bold bg-warning text-dark";
+            } else {
+                statusEl.innerText = "正常 (Normal)";
+                statusEl.className = "px-2 py-1 rounded text-xs font-bold bg-success text-white";
+            }
+
+            // Vibration Chart
+            const ctxVib = document.getElementById('detailVibrationChart').getContext('2d');
+            if(vibChartInstance) vibChartInstance.destroy();
+
+            vibChartInstance = new Chart(ctxVib, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '振动值',
+                        data: vibData,
+                        backgroundColor: vibData.map(v => v > threshold ? '#ef4444' : '#38bdf8'),
+                        borderRadius: 4
+                    },
+                    {
+                        label: '报警阈值',
+                        data: Array(labels.length).fill(threshold),
+                        type: 'line',
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true }
+                    }
+                }
+            });
+
+            // Temperature Chart
+            const ctxTemp = document.getElementById('detailTempChart').getContext('2d');
+            if(tempChartInstance) tempChartInstance.destroy();
+
+            tempChartInstance = new Chart(ctxTemp, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '温度 (°C)',
+                        data: tempData,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        }
+
+        function renderAlertsTable() {
+            const tbody = document.getElementById('alerts-table-body');
+            tbody.innerHTML = '';
+
+            // Filter only records with notes or high vibration
+            const alerts = data.filter(d => d.severity > 0 || d.vibration > d.threshold);
+
+            alerts.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-700/50 transition-colors";
+                
+                let severityClass = "bg-gray-700 text-gray-300";
+                let severityText = "正常";
+                
+                if(d.severity === 1) { severityClass = "bg-blue-900 text-blue-200"; severityText = "轻微"; }
+                if(d.severity === 2) { severityClass = "bg-yellow-900 text-yellow-200"; severityText = "明显"; }
+                if(d.severity === 3) { severityClass = "bg-orange-900 text-orange-200"; severityText = "严重"; }
+                if(d.severity === 4) { severityClass = "bg-red-900 text-red-200"; severityText = "紧急"; }
+
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-xs text-gray-400">${d.timestamp}</td>
+                    <td class="p-4 font-bold text-accent">${d.equipment_id}</td>
+                    <td class="p-4 ${d.vibration > d.threshold ? 'text-danger font-bold' : ''}">${d.vibration}</td>
+                    <td class="p-4">${d.temperature}</td>
+                    <td class="p-4 text-gray-300">${d.notes || '-'}</td>
+                    <td class="p-4"><span class="px-2 py-1 rounded text-xs ${severityClass}">${severityText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+    </script>
+</body>
+</html>
