@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备状态监控分析报告 | Equipment Health Dashboard</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #0dcaf0;
+            --bg-light: #f8f9fa;
+            --card-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: #343a40;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+
+        /* Navbar */
+        .navbar {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            background: white;
+            height: 100%;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            font-weight: 600;
+            padding: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* KPI Cards */
+        .kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .kpi-card h3 {
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+        .kpi-card p {
+            font-size: 0.85rem;
+            color: var(--secondary-color);
+            margin-bottom: 0;
+        }
+
+        /* Status Badges */
+        .badge-custom {
+            padding: 0.5em 0.8em;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        /* Section Headers */
+        .section-title {
+            position: relative;
+            padding-left: 15px;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .section-title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 5px;
+            bottom: 5px;
+            width: 5px;
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* Alerts & Notes */
+        .alert-card {
+            border-left: 4px solid var(--danger-color);
+            background-color: #fff5f5;
+        }
+        .alert-card.warning {
+            border-left-color: var(--warning-color);
+            background-color: #fffbeb;
+        }
+        .alert-card.info {
+            border-left-color: var(--info-color);
+            background-color: #f0f9ff;
+        }
+
+        /* Animation */
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+
+        /* Table */
+        .table-custom thead th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .table-custom tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* Floating Action Button (Scroll to top) */
+        #btn-back-to-top {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            z-index: 1000;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fa-solid fa-chart-line me-2"></i> 设备健康监控中心
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item"><a class="nav-link active" href="#summary">执行摘要</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#kpi">关键指标</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#trends">趋势分析</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#insights">洞察建议</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        
+        <!-- Header Section -->
+        <div class="row mb-5 fade-in-up">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-end">
+                    <div>
+                        <h1 class="fw-bold mb-2">设备状态监控日报</h1>
+                        <p class="text-muted mb-0"><i class="fa-regular fa-calendar me-2"></i> 报告周期：2025年2月1日 08:00 - 15:00</p>
+                    </div>
+                    <div class="text-end d-none d-md-block">
+                        <span class="badge bg-success me-2">系统运行中</span>
+                        <span class="badge bg-secondary">数据源: SCADA_v2.1</span>
+                    </div>
+                </div>
+                <hr class="mt-4">
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <section id="summary" class="mb-5 fade-in-up delay-1">
+            <h2 class="section-title">执行摘要</h2>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <p class="lead mb-3">
+                                本次监控周期内，共监测 <strong>7台</strong> 关键设备，采集有效数据点 <strong>50条</strong>。
+                                整体设备运行状态呈现 <span class="text-warning fw-bold">分化趋势</span>。
+                            </p>
+                            <p>
+                                <strong class="text-danger">重点关注：</strong> 设备 <strong>P-101</strong> 在午间时段（12:00-13:00）振动值突破阈值（>4.5），并伴随严重度为4级的操作备注（紧急检查），表明该设备在该时段经历了显著的机械应力异常。此外，<strong>F-201</strong> 和 <strong>P-104</strong> 振动值呈持续上升趋势，已接近或达到报警线，建议列入下周重点巡检名单。
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="p-3 bg-light rounded-3">
+                                <div class="mb-2 text-muted small">整体健康评分</div>
+                                <div class="display-4 fw-bold text-primary">82<span class="fs-5 text-muted">/100</span></div>
+                                <div class="progress mt-2" style="height: 8px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 82%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI Section -->
+        <section id="kpi" class="mb-5 fade-in-up delay-2">
+            <h2 class="section-title">关键指标概览</h2>
+            <div class="row g-4">
+                <!-- KPI 1 -->
+                <div class="col-6 col-lg-3">
+                    <div class="card kpi-card p-3">
+                        <div class="kpi-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="fa-solid fa-server"></i>
+                        </div>
+                        <h3 class="text-dark">7</h3>
+                        <p>监测设备总数</p>
+                    </div>
+                </div>
+                <!-- KPI 2 -->
+                <div class="col-6 col-lg-3">
+                    <div class="card kpi-card p-3">
+                        <div class="kpi-icon bg-danger bg-opacity-10 text-danger">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <h3 class="text-danger">2</h3>
+                        <p>报警/异常事件</p>
+                    </div>
+                </div>
+                <!-- KPI 3 -->
+                <div class="col-6 col-lg-3">
+                    <div class="card kpi-card p-3">
+                        <div class="kpi-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="fa-solid fa-temperature-high"></i>
+                        </div>
+                        <h3 class="text-dark">59.5<span class="fs-6">°C</span></h3>
+                        <p>最高温度 (F-201)</p>
+                    </div>
+                </div>
+                <!-- KPI 4 -->
+                <div class="col-6 col-lg-3">
+                    <div class="card kpi-card p-3">
+                        <div class="kpi-icon bg-success bg-opacity-10 text-success">
+                            <i class="fa-solid fa-wave-square"></i>
+                        </div>
+                        <h3 class="text-dark">5.5</h3>
+                        <p>最高振动 (F-201)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Charts Section -->
+        <section id="trends" class="mb-5 fade-in-up delay-3">
+            <h2 class="section-title">详细数据分析</h2>
+            
+            <!-- Vibration Trends -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <span><i class="fa-solid fa-wave-square me-2 text-primary"></i> 设备振动趋势对比 (Vibration Trends)</span>
+                    <span class="badge bg-light text-dark border">单位: mm/s</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="vibrationChart"></canvas>
+                    </div>
+                    <div class="mt-3 text-muted small">
+                        <i class="fa-solid fa-circle-info me-1"></i> 
+                        图表分析：P-101在12:00出现尖峰，F-201全天呈线性增长。P-102和P-103运行最为平稳。
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-4">
+                <!-- Temperature Trends -->
+                <div class="col-lg-8">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <span><i class="fa-solid fa-temperature-half me-2 text-danger"></i> 温度变化曲线 (Temperature)</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="temperatureChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Severity Distribution -->
+                <div class="col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <span><i class="fa-solid fa-triangle-exclamation me-2 text-warning"></i> 异常严重度分布</span>
+                        </div>
+                        <div class="card-body d-flex flex-column justify-content-center">
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="severityChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equipment Performance Radar -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <span><i class="fa-solid fa-chart-pie me-2 text-info"></i> 设备综合性能雷达图 (Performance Radar)</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8 mx-auto">
+                            <div class="chart-container">
+                                <canvas id="radarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Insights & Recommendations -->
+        <section id="insights" class="mb-5 fade-in-up delay-4">
+            <h2 class="section-title">深度洞察与维护建议</h2>
+            <div class="row g-4">
+                <!-- Critical Alert -->
+                <div class="col-md-6">
+                    <div class="card alert-card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> 紧急关注：P-101 机械异响</h5>
+                            <p class="card-text">
+                                P-101在11:00至13:00期间振动值从4.2飙升至5.1，远超4.5的报警阈值。操作员记录显示存在"异响明显"及"紧急检查"备注。
+                            </p>
+                            <hr>
+                            <h6 class="fw-bold">建议措施：</h6>
+                            <ul class="mb-0">
+                                <li>立即安排停机检查轴承磨损情况。</li>
+                                <li>检查联轴器对中状态。</li>
+                                <li>复查历史数据，确认是否存在周期性故障。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warning Alert -->
+                <div class="col-md-6">
+                    <div class="card alert-card warning h-100">
+                        <div class="card-body">
+                            <h5 class="card-title text-warning"><i class="fa-solid fa-arrow-trend-up me-2"></i> 趋势预警：F-201 持续高负荷</h5>
+                            <p class="card-text">
+                                F-201全天振动值呈单调递增趋势（4.1 -> 5.5），且温度达到全场最高59.5°C。虽然未超过6.0阈值，但趋势极其危险。
+                            </p>
+                            <hr>
+                            <h6 class="fw-bold">建议措施：</h6>
+                            <ul class="mb-0">
+                                <li>监控负载是否过高，考虑降载运行。</li>
+                                <li>检查冷却系统效率。</li>
+                                <li>增加巡检频次至每小时一次。</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Good Performance -->
+                <div class="col-md-12 mt-4">
+                    <div class="card border-success border-2">
+                        <div class="card-body">
+                            <h5 class="card-title text-success"><i class="fa-solid fa-check-circle me-2"></i> 优良表现设备</h5>
+                            <div class="row mt-3">
+                                <div class="col-md-4 text-center">
+                                    <h4>P-102</h4>
+                                    <p class="text-muted small">振动平稳，温度适中</p>
+                                    <span class="badge bg-success">状态：健康</span>
+                                </div>
+                                <div class="col-md-4 text-center border-start">
+                                    <h4>P-103</h4>
+                                    <p class="text-muted small">全场最低振动，运行平稳</p>
+                                    <span class="badge bg-success">状态：极佳</span>
+                                </div>
+                                <div class="col-md-4 text-center border-start">
+                                    <h4>F-202</h4>
+                                    <p class="text-muted small">虽有上升，但仍在安全裕度内</p>
+                                    <span class="badge bg-success">状态：正常</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Table Section -->
+        <section class="mb-5 fade-in-up delay-4">
+            <h2 class="section-title">原始数据记录</h2>
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-custom table-hover mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>设备编号</th>
+                                    <th>时间戳</th>
+                                    <th>振动 (mm/s)</th>
+                                    <th>温度 (°C)</th>
+                                    <th>阈值</th>
+                                    <th>备注</th>
+                                    <th>严重度</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dataTableBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-muted py-4 border-top mt-5">
+            <p class="mb-0"> 工业智能运维系统 | 数据最后更新：2025-02-01 15:00:00</p>
+        </footer>
+    </div>
+
+    <!-- Back to top button -->
+    <button type="button" class="btn btn-primary btn-floating" id="btn-back-to-top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // --- 1. Data Preparation (Embedded from CSV) ---
+        const rawData = [
+            {id:1, eq:'P-101', time:'08:00', vib:3.2, temp:45.2, thr:4.5, note:'', sev:0},
+            {id:2, eq:'P-101', time:'09:00', vib:3.5, temp:45.8, thr:4.5, note:'', sev:0},
+            {id:3, eq:'P-101', time:'10:00', vib:3.8, temp:46.1, thr:4.5, note:'', sev:0},
+            {id:4, eq:'P-101', time:'11:00', vib:4.2, temp:46.5, thr:4.5, note:'异响轻微', sev:1},
+            {id:5, eq:'P-101', time:'12:00', vib:4.7, temp:47.0, thr:4.5, note:'异响明显', sev:2},
+            {id:6, eq:'P-101', time:'13:00', vib:5.1, temp:48.2, thr:4.5, note:'紧急检查', sev:4},
+            {id:7, eq:'P-101', time:'14:00', vib:4.9, temp:48.0, thr:4.5, note:'', sev:0},
+            {id:8, eq:'P-101', time:'15:00', vib:4.6, temp:47.5, thr:4.5, note:'', sev:0},
+            {id:9, eq:'P-102', time:'08:00', vib:2.1, temp:38.5, thr:5.0, note:'', sev:0},
+            {id:10, eq:'P-102', time:'09:00', vib:2.3, temp:39.0, thr:5.0, note:'', sev:0},
+            {id:11, eq:'P-102', time:'10:00', vib:2.5, temp:39.4, thr:5.0, note:'', sev:0},
+            {id:12, eq:'P-102', time:'11:00', vib:2.6, temp:40.2, thr:5.0, note:'', sev:0},
+            {id:13, eq:'P-102', time:'12:00', vib:2.4, temp:39.8, thr:5.0, note:'', sev:0},
+            {id:14, eq:'P-102', time:'13:00', vib:2.2, temp:39.5, thr:5.0, note:'', sev:0},
+            {id:15, eq:'P-102', time:'14:00', vib:2.3, temp:39.3, thr:5.0, note:'', sev:0},
+            {id:16, eq:'P-102', time:'15:00', vib:2.5, temp:39.6, thr:5.0, note:'', sev:0},
+            {id:17, eq:'F-201', time:'08:00', vib:4.1, temp:55.0, thr:6.0, note:'', sev:0},
+            {id:18, eq:'F-201', time:'09:00', vib:4.3, temp:55.8, thr:6.0, note:'', sev:0},
+            {id:19, eq:'F-201', time:'10:00', vib:4.5, temp:56.2, thr:6.0, note:'', sev:0},
+            {id:20, eq:'F-201', time:'11:00', vib:4.8, temp:57.1, thr:6.0, note:'', sev:0},
+            {id:21, eq:'F-201', time:'12:00', vib:5.2, temp:58.0, thr:6.0, note:'', sev:0},
+            {id:22, eq:'F-201', time:'13:00', vib:5.5, temp:59.5, thr:6.0, note:'', sev:0},
+            {id:23, eq:'F-201', time:'14:00', vib:5.3, temp:59.0, thr:6.0, note:'', sev:0},
+            {id:24, eq:'F-201', time:'15:00', vib:5.0, temp:58.2, thr:6.0, note:'', sev:0},
+            {id:25, eq:'F-202', time:'08:00', vib:2.8, temp:42.0, thr:5.5, note:'', sev:0},
+            {id:26, eq:'F-202', time:'09:00', vib:2.9, temp:42.5, thr:5.5, note:'', sev:0},
+            {id:27, eq:'F-202', time:'10:00', vib:3.0, temp:43.0, thr:5.5, note:'', sev:0},
+            {id:28, eq:'F-202', time:'11:00', vib:3.1, temp:43.2, thr:5.5, note:'', sev:0},
+            {id:29, eq:'F-202', time:'12:00', vib:3.3, temp:43.8, thr:5.5, note:'', sev:0},
+            {id:30, eq:'F-202', time:'13:00', vib:3.4, temp:44.5, thr:5.5, note:'', sev:0},
+            {id:31, eq:'F-202', time:'14:00', vib:3.6, temp:45.0, thr:5.5, note:'', sev:0},
+            {id:32, eq:'F-202', time:'15:00', vib:3.8, temp:45.6, thr:5.5, note:'', sev:0},
+            {id:33, eq:'P-103', time:'08:00', vib:1.5, temp:30.2, thr:4.0, note:'', sev:0},
+            {id:34, eq:'P-103', time:'09:00', vib:1.6, temp:30.5, thr:4.0, note:'', sev:0},
+            {id:35, eq:'P-103', time:'10:00', vib:1.7, temp:31.0, thr:4.0, note:'', sev:0},
+            {id:36, eq:'P-103', time:'11:00', vib:1.8, temp:31.2, thr:4.0, note:'', sev:0},
+            {id:37, eq:'P-103', time:'12:00', vib:1.9, temp:31.5, thr:4.0, note:'', sev:0},
+            {id:38, eq:'P-103', time:'13:00', vib:2.0, temp:32.0, thr:4.0, note:'', sev:0},
+            {id:39, eq:'P-103', time:'14:00', vib:2.1, temp:32.3, thr:4.0, note:'', sev:0},
+            {id:40, eq:'P-103', time:'15:00', vib:2.2, temp:32.5, thr:4.0, note:'', sev:0},
+            {id:41, eq:'P-104', time:'08:00', vib:3.9, temp:50.0, thr:5.0, note:'', sev:0},
+            {id:42, eq:'P-104', time:'09:00', vib:4.0, temp:50.5, thr:5.0, note:'', sev:0},
+            {id:43, eq:'P-104', time:'10:00', vib:4.2, temp:51.2, thr:5.0, note:'', sev:0},
+            {id:44, eq:'P-104', time:'11:00', vib:4.5, temp:52.0, thr:5.0, note:'', sev:0},
+            {id:45, eq:'P-104', time:'12:00', vib:4.8, temp:53.1, thr:5.0, note:'', sev:0},
+            {id:46, eq:'P-104', time:'13:00', vib:5.1, temp:54.0, thr:5.0, note:'噪音增大', sev:3},
+            {id:47, eq:'P-104', time:'14:00', vib:5.3, temp:54.8, thr:5.0, note:'', sev:0},
+            {id:48, eq:'P-104', time:'15:00', vib:5.2, temp:54.5, thr:5.0, note:'', sev:0},
+            {id:49, eq:'P-105', time:'08:00', vib:2.0, temp:33.0, thr:4.5, note:'', sev:0},
+            {id:50, eq:'P-105', time:'09:00', vib:2.2, temp:33.5, thr:4.5, note:'', sev:0}
+        ];
+
+        // Helper to group data by equipment
+        const equipmentGroups = {};
+        rawData.forEach(row => {
+            if (!equipmentGroups[row.eq]) {
+                equipmentGroups[row.eq] = [];
+            }
+            equipmentGroups[row.eq].push(row);
+        });
+
+        const timeLabels = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'];
+        const colors = {
+            'P-101': '#dc3545', // Red
+            'P-102': '#0d6efd', // Blue
+            'P-103': '#198754', // Green
+            'P-104': '#fd7e14', // Orange
+            'P-105': '#6f42c1', // Purple
+            'F-201': '#d63384', // Pink
+            'F-202': '#0dcaf0'  // Cyan
+        };
+
+        // --- 2. Chart Configurations ---
+
+        // Common Chart Options
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, boxWidth: 8 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    titleColor: '#000',
+                    bodyColor: '#666',
+                    borderColor: '#ddd',
+                    borderWidth: 1,
+                    padding: 10
+                }
+            }
+        };
+
+        // A. Vibration Chart (Line)
+        const ctxVib = document.getElementById('vibrationChart').getContext('2d');
+        const vibDatasets = Object.keys(equipmentGroups).map(eq => {
+            return {
+                label: eq,
+                data: equipmentGroups[eq].map(d => d.vib),
+                borderColor: colors[eq],
+                backgroundColor: colors[eq],
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 6
+            };
+        });
+
+        new Chart(ctxVib, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: vibDatasets
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: '振动值 (mm/s)' },
+                        grid: { borderDash: [2, 4], color: '#f0f0f0' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // B. Temperature Chart (Line with Fill)
+        const ctxTemp = document.getElementById('temperatureChart').getContext('2d');
+        const tempDatasets = Object.keys(equipmentGroups).map(eq => {
+            return {
+                label: eq,
+                data: equipmentGroups[eq].map(d => d.temp),
+                borderColor: colors[eq],
+                backgroundColor: colors[eq] + '20', // Add transparency
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 5
+            };
+        });
+
+        new Chart(ctxTemp, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: tempDatasets
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        title: { display: true, text: '温度 (°C)' },
+                        grid: { borderDash: [2, 4], color: '#f0f0f0' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // C. Severity Chart (Doughnut)
+        const severityCounts = {0:0, 1:0, 2:0, 3:0, 4:0};
+        rawData.forEach(d => { if(d.sev > 0) severityCounts[d.sev]++ });
+
+        const ctxSev = document.getElementById('severityChart').getContext('2d');
+        new Chart(ctxSev, {
+            type: 'doughnut',
+            data: {
+                labels: ['严重度 1 (轻微)', '严重度 2 (明显)', '严重度 3 (增大)', '严重度 4 (紧急)'],
+                datasets: [{
+                    data: [severityCounts[1], severityCounts[2], severityCounts[3], severityCounts[4]],
+                    backgroundColor: ['#ffc107', '#fd7e14', '#dc3545', '#7f1d1d'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+
+        // D. Radar Chart (Performance Snapshot at 15:00)
+        const finalData = rawData.filter(d => d.time === '15:00');
+        const radarData = {
+            labels: finalData.map(d => d.eq),
+            datasets: [
+                {
+                    label: '最终振动值 (归一化)',
+                    data: finalData.map(d => d.vib), // Simple mapping for demo
+                    fill: true,
+                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
+                    borderColor: 'rgb(13, 110, 253)',
+                    pointBackgroundColor: 'rgb(13, 110, 253)',
+                },
+                {
+                    label: '最终温度 (归一化)',
+                    data: finalData.map(d => d.temp / 10), // Scale down temp to match vib range roughly for viz
+                    fill: true,
+                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                    borderColor: 'rgb(220, 53, 69)',
+                    pointBackgroundColor: 'rgb(220, 53, 69)',
+                }
+            ]
+        };
+
+        const ctxRadar = document.getElementById('radarChart').getContext('2d');
+        new Chart(ctxRadar, {
+            type: 'radar',
+            data: radarData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                elements: { line: { borderWidth: 3 } },
+                scales: {
+                    r: {
+                        angleLines: { display: true },
+                        suggestedMin: 0
+                    }
+                }
+            }
+        });
+
+        // --- 3. Populate Data Table ---
+        const tableBody = document.getElementById('dataTableBody');
+        rawData.forEach(row => {
+            let severityBadge = '';
+            if(row.sev === 0) severityBadge = '<span class="badge bg-light text-dark">正常</span>';
+            else if(row.sev === 1) severityBadge = '<span class="badge bg-warning text-dark">轻微</span>';
+            else if(row.sev === 2) severityBadge = '<span class="badge bg-warning">明显</span>';
+            else if(row.sev === 3) severityBadge = '<span class="badge bg-danger">增大</span>';
+            else if(row.sev === 4) severityBadge = '<span class="badge bg-dark">紧急</span>';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${row.id}</td>
+                <td><span class="fw-bold" style="color:${colors[row.eq]}">${row.eq}</span></td>
+                <td>${row.time}</td>
+                <td>${row.vib.toFixed(1)}</td>
+                <td>${row.temp.toFixed(1)}</td>
+                <td><span class="text-muted">${row.thr}</span></td>
+                <td>${row.note || '-'}</td>
+                <td>${severityBadge}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+        // --- 4. Scroll to Top Logic ---
+        const backToTopButton = document.getElementById("btn-back-to-top");
+        window.onscroll = function () {
+            if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+                backToTopButton.style.display = "block";
+            } else {
+                backToTopButton.style.display = "none";
+            }
+        };
+        backToTopButton.addEventListener("click", function(){
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        });
+
+    </script>
+</body>
+</html>
