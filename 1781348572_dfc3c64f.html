@@ -1,0 +1,1574 @@
+<think>
+用户要求我将CSV数据转换为一个美观、专业的HTML分析报告，使用Chart.js进行可视化，Bootstrap进行样式设计。
+
+首先分析数据：
+- 设备：P-101, P-102, F-201, F-202, P-103, P-104, P-105
+- 时间：2025-02-01 08:00到15:00
+- 指标：vibration_value（振动值）, temperature（温度）, alarm_threshold（报警阈值）, operator_notes（操作备注）, note_severity（备注严重等级）
+
+关键发现：
+1. P-101：振动值从3.2上升到5.1（超过阈值4.5），有严重备注（异响轻微→异响明显→紧急检查），温度也上升
+2. P-102：振动值稳定，远低于阈值5.0
+3. F-201：振动值从4.1上升到5.5，超过阈值6.0？等等，阈值是6.0，5.5没超过，但接近
+4. F-202：振动值从2.8上升到3.8，阈值5.5，正常
+5. P-103：振动值低，稳定
+6. P-104：振动值从3.9上升到5.3，超过阈值5.0，有备注"噪音增大"
+7. P-105：只有2条数据，振动值2.0-2.2，阈值4.5
+
+等等，让我重新检查数据：
+- P-101: 阈值4.5，最大值5.1（13:00），超过阈值。有3条备注
+- P-102: 阈值5.0，最大值2.6，正常
+- F-201: 阈值6.0，最大值5.5，未超过但接近
+- F-202: 阈值5.5，最大值3.8，正常
+- P-103: 阈值4.0，最大值2.2，正常
+- P-104: 阈值5.0，最大值5.3（14:00），超过阈值。有备注"噪音增大"
+- P-105: 阈值4.5，只有2条数据
+
+需要计算统计：
+- 总记录数：50条（P-105只有2条，49和50）
+- 设备数：7台
+- 平均振动值：需要计算
+- 超过阈值的记录：P-101有3条（12:00是4.7？等等，4.7>4.5，13:00是5.1，14:00是4.9），实际上11:00是4.2<4.5，12:00是4.7>4.5，13:00是5.1>4.5，14:00是4.9>4.5。所以P-101有3条超过阈值（12,13,14点）。P-104：11:00是4.5=阈值？通常等于也算超过或临界。12:00 4.8>5.0，13:00 5.1>5.0，14:00 5.3>5.0，15:00 5.2>5.0。所以P-104有4条明显超过（如果4.5算超过则有5条）。F-201最大5.5<6.0，未超过。
+
+等等，我需要精确计算：
+P-101: 3.2, 3.5, 3.8, 4.2, 4.7, 5.1, 4.9, 4.6. 阈值4.5。超过：4.7, 5.1, 4.9（3次）
+P-102: 最大2.6<5.0（0次）
+F-201: 最大5.5<6.0（0次）
+F-202: 最大3.8<5.5（0次）
+P-103: 最大2.2<4.0（0次）
+P-104: 3.9, 4.0, 4.2, 4.5, 4.8, 5.1, 5.3, 5.2. 阈值5.0。超过：5.1, 5.3, 5.2（3次，4.5和4.8是低于或等于？4.8<5.0, 4.5<5.0）
+P-105: 2.0, 2.2（0次）
+
+所以共有6条报警记录（超过阈值）。
+
+平均振动值：
+P-101总和：3.2+3.5+3.8+4.2+4.7+5.1+4.9+4.6 = 34.0，平均4.25
+P-102总和：2.1+2.3+2.5+2.6+2.4+2.2+2.3+2.5 = 18.9，平均2.3625
+F-201总和：4.1+4.3+4.5+4.8+5.2+5.5+5.3+5.0 = 38.7，平均4.8375
+F-202总和：2.8+2.9+3.0+3.1+3.3+3.4+3.6+3.8 = 25.9，平均3.2375
+P-103总和：1.5+1.6+1.7+1.8+1.9+2.0+2.1+2.2 = 15.8，平均1.975
+P-104总和：3.9+4.0+4.2+4.5+4.8+5.1+5.3+5.2 = 37.0，平均4.625
+P-105总和：2.0+2.2 = 4.2，平均2.1
+
+总平均振动：(34+18.9+38.7+25.9+15.8+37+4.2)/50 = 174.5/50 = 3.49
+
+平均温度类似计算。
+
+最高温度：
+P-101: 48.2
+P-102: 40.2
+F-201: 59.5
+F-202: 45.6
+P-103: 32.5
+P-104: 54.8
+P-105: 33.5
+
+现在设计HTML报告结构：
+1. 头部：标题、时间
+2. 执行摘要：关键发现卡片
+3. 关键指标：KPI卡片（总设备数、总记录、平均振动、报警次数、最高温度等）
+4. 详细分析：
+   - 振动趋势折线图（按时间，多条线表示不同设备）
+   - 温度趋势折线图
+   - 设备振动对比柱状图（平均值）
+   - 报警分布/设备状态饼图或柱状图
+   - 振动vs阈值散点图或对比图
+5. 异常分析：P-101和P-104的详细表格
+6. 建议与结论
+
+配色方案：使用专业的蓝色系，报警用红色/橙色。
+
+需要使用Chart.js，通过CDN引入。Bootstrap 5通过CDN引入。
+
+数据准备：
+时间标签：08:00, 09:00, 10:00, 11:00, 12:00, 13:00, 14:00, 15:00
+
+各设备数据序列：
+P-101: [3.2,3.5,3.8,4.2,4.7,5.1,4.9,4.6]
+P-102: [2.1,2.3,2.5,2.6,2.4,2.2,2.3,2.5]
+F-201: [4.1,4.3,4.5,4.8,5.2,5.5,5.3,5.0]
+F-202: [2.8,2.9,3.0,3.1,3.3,3.4,3.6,3.8]
+P-103: [1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2]
+P-104: [3.9,4.0,4.2,4.5,4.8,5.1,5.3,5.2]
+P-105: [2.0,2.2,null,null,null,null,null,null] - 只有2个点
+
+温度序列类似。
+
+备注严重等级：
+P-101: [0,0,0,1,2,4,0,0]
+P-104: [0,0,0,0,0,3,0,0]
+
+报警阈值线：
+P-101: 4.5
+P-102: 5.0
+F-201: 6.0
+F-202: 5.5
+P-103: 4.0
+P-104: 5.0
+P-105: 4.5
+
+我需要确保图表清晰。由于设备较多，折线图可能有点乱，但7条线还可以。使用不同颜色。
+
+关键指标卡片：
+- 监控设备：7台
+- 数据记录：50条
+- 平均振动：3.49 mm/s（假设单位）
+- 异常报警：6次
+- 最高温度：59.5°C（F-201）
+- 待处理异常：2台（P-101, P-104）
+
+等等，P-105只有2条数据，需要说明数据不完整。
+
+让我重新计算一些精确值：
+总记录数：50（P-101有8条，P-102有8条，F-201有8条，F-202有8条，P-103有8条，P-104有8条，P-105有2条）。总计50条。
+
+平均振动：
+P-101: 34.0/8 = 4.25
+P-102: 18.9/8 = 2.3625
+F-201: 38.7/8 = 4.8375
+F-202: 25.9/8 = 3.2375
+P-103: 15.8/8 = 1.975
+P-104: 37.0/8 = 4.625
+P-105: 4.2/2 = 2.1
+总和：34+18.9+38.7+25.9+15.8+37+4.2 = 174.5
+总平均：174.5/50 = 3.49
+
+平均温度：
+P-101: (45.2+45.8+46.1+46.5+47.0+48.2+48.0+47.5)/8 = 376.3/8 = 47.0375
+P-102: (38.5+39.0+39.4+40.2+39.8+39.5+39.3+39.6)/8 = 315.3/8 = 39.4125
+F-201: (55.0+55.8+56.2+57.1+58.0+59.5+59.0+58.2)/8 = 458.8/8 = 57.35
+F-202: (42.0+42.5+43.0+43.2+43.8+44.5+45.0+45.6)/8 = 349.6/8 = 43.7
+P-103: (30.2+30.5+31.0+31.2+31.5+32.0+32.3+32.5)/8 = 251.2/8 = 31.4
+P-104: (50.0+50.5+51.2+52.0+53.1+54.0+54.8+54.5)/8 = 420.1/8 = 52.5125
+P-105: (33.0+33.5)/2 = 33.25
+总和：376.3+315.3+458.8+349.6+251.2+420.1+66.5 = 2237.8
+总平均：2237.8/50 = 44.756
+
+最高温度：59.5°C (F-201, 13:00)
+最高振动：5.5 mm/s (F-201, 13:00) 等等，P-104是5.3，P-101是5.1。所以最高振动是F-201的5.5。但F-201阈值是6.0，所以未报警。P-101最高5.1（超过4.5），P-104最高5.3（超过5.0）。
+
+报警次数统计（振动值>阈值）：
+P-101: 4.7, 5.1, 4.9 → 3次（12:00,13:00,14:00）
+P-104: 5.1, 5.3, 5.2 → 3次（13:00,14:00,15:00）
+总计：6次
+
+备注严重等级>0的记录：
+P-101: 
+- 11:00 异响轻微 (1)
+- 12:00 异响明显 (2)
+- 13:00 紧急检查 (4)
+P-104:
+- 13:00 噪音增大 (3)
+共4条有备注
+
+现在构建HTML。
+
+页面结构：
+- <!DOCTYPE html>
+- html lang="zh-CN"
+- head: meta, title, Bootstrap CSS, Chart.js, custom CSS
+- body
+  - nav: 设备监控分析报告
+  - container
+    - 执行摘要部分（jumbotron风格）
+    - KPI卡片行（6个卡片）
+    - 图表行1：振动趋势（折线图，8个时间点，7条线+阈值标记？不，阈值每个设备不同，可能用annotation plugin，但为了简单，可以在描述中说明，或在图表中给每台设备画一条虚线？但不同设备阈值不同，放在一个图里太多线了。不如做两个图：一个是振动趋势折线图（主要设备），另一个是每台设备的振动与阈值对比柱状图。）
+    - 图表行2：温度趋势 + 设备平均振动对比柱状图
+    - 图表行3：报警分析（饼图/环形图：正常vs报警）+ 异常事件表格
+    - 详细数据表格：异常记录明细
+    - 建议与结论
+
+由于Chart.js的annotation plugin需要额外引入，为了简化，我可以：
+1. 振动趋势图只画折线，用颜色区分，在tooltip里显示阈值
+2. 单独做一张"设备振动极值与阈值对比"的柱状图，每台设备画两个柱子：最大振动和阈值
+
+或者，我可以为每台设备做一个小型sparkline？不，那样太复杂。
+
+让我重新考虑可视化：
+图1：振动趋势时序图（多设备折线图），这很重要。7条线用不同颜色。在文本中说明哪些超过阈值。
+图2：温度趋势时序图（多设备折线图）。
+图3：设备平均振动对比（柱状图），X轴设备名，Y轴平均振动值。可以加上阈值线？但阈值不同。可以做成分组柱状图：平均振动 vs 报警阈值，每台设备两个柱子。
+图4：报警分布饼图或环形图（7台设备中，正常设备数 vs 异常设备数）。或者柱状图显示每台设备的报警次数。
+图5：严重等级分布（如果有备注的话）。
+
+由于P-105数据不全，在图表中需要注意。可以只画到有的数据点。
+
+配色：
+- P-101: #e74c3c (红色，异常)
+- P-102: #3498db (蓝色)
+- F-201: #f39c12 (橙色)
+- F-202: #2ecc71 (绿色)
+- P-103: #9b59b6 (紫色)
+- P-104: #e67e22 (深橙，异常)
+- P-105: #1abc9c (青色)
+
+KPI卡片：
+1. 总设备数：7台
+2. 数据记录：50条
+3. 平均振动：3.49
+4. 异常报警：6次
+5. 最高温度：59.5°C
+6. 异常设备：2台
+
+执行摘要文本：
+本次分析涵盖7台关键设备，采集50条监控记录。发现P-101和P-104存在振动超标，其中P-101伴随严重等级递增的异常声响（最高至"紧急检查"），P-104出现"噪音增大"。F-201振动虽未超阈值但呈上升趋势且绝对值最高（5.5），需密切关注。其余设备运行平稳。
+
+建议：
+1. 立即对P-101进行停机检修，排查异响根源
+2. 对P-104进行轴承或机械部件检查
+3. 增加F-201巡检频率，关注振动上升趋势
+4. 完善P-105的数据采集，当前数据不完整
+
+现在写代码。需要确保响应式。
+
+Bootstrap 5 CDN:
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+自定义CSS：
+- body: background #f8f9fa
+- .kpi-card: 白色背景，圆角，阴影，hover效果，左边框颜色
+- .section-title: 带左边框的标题
+- .summary-box: 渐变背景
+- 表格样式
+
+Chart.js数据准备：
+
+时间标签：['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00']
+
+振动数据集：
+{
+  label: 'P-101',
+  data: [3.2, 3.5, 3.8, 4.2, 4.7, 5.1, 4.9, 4.6],
+  borderColor: '#e74c3c',
+  tension: 0.3
+},
+{
+  label: 'P-102',
+  data: [2.1, 2.3, 2.5, 2.6, 2.4, 2.2, 2.3, 2.5],
+  borderColor: '#3498db',
+  tension: 0.3
+},
+{
+  label: 'F-201',
+  data: [4.1, 4.3, 4.5, 4.8, 5.2, 5.5, 5.3, 5.0],
+  borderColor: '#f39c12',
+  tension: 0.3
+},
+{
+  label: 'F-202',
+  data: [2.8, 2.9, 3.0, 3.1, 3.3, 3.4, 3.6, 3.8],
+  borderColor: '#2ecc71',
+  tension: 0.3
+},
+{
+  label: 'P-103',
+  data: [1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.1, 2.2],
+  borderColor: '#9b59b6',
+  tension: 0.3
+},
+{
+  label: 'P-104',
+  data: [3.9, 4.0, 4.2, 4.5, 4.8, 5.1, 5.3, 5.2],
+  borderColor: '#e67e22',
+  tension: 0.3
+},
+{
+  label: 'P-105',
+  data: [2.0, 2.2, null, null, null, null, null, null],
+  borderColor: '#1abc9c',
+  tension: 0.3,
+  spanGaps: false
+}
+
+温度数据集类似。
+
+设备平均振动与阈值对比图（柱状图）：
+设备：['P-101', 'P-102', 'F-201', 'F-202', 'P-103', 'P-104', 'P-105']
+平均振动：[4.25, 2.36, 4.84, 3.24, 1.98, 4.63, 2.1]
+阈值：[4.5, 5.0, 6.0, 5.5, 4.0, 5.0, 4.5]
+可以用两个dataset，一个bar一个line？或者都用bar。用分组柱状图。
+或者更好：用柱状图显示平均振动，然后用一条线（line dataset, type: 'line'）显示阈值。
+在Chart.js中可以在同一个chart中混合类型。
+
+报警次数柱状图：
+P-101: 3
+P-102: 0
+F-201: 0
+F-202: 0
+P-103: 0
+P-104: 3
+P-105: 0
+
+异常事件表格：
+| 时间 | 设备 | 振动值 | 阈值 | 温度 | 操作备注 | 严重等级 |
+| 2025-02-01 11:00 | P-101 | 4.2 | 4.5 | 46.5 | 异响轻微 | 1 |
+| 2025-02-01 12:00 | P-101 | 4.7 | 4.5 | 47.0 | 异响明显 | 2 |
+| 2025-02-01 13:00 | P-101 | 5.1 | 4.5 | 48.2 | 紧急检查 | 4 |
+| 2025-02-01 13:00 | P-104 | 5.1 | 5.0 | 54.0 | 噪音增大 | 3 |
+
+等等，P-101在11:00振动4.2，低于阈值4.5，但有备注"异响轻微"。严格来说不算振动超标，但有异常备注。12:00 4.7>4.5，算超标。
+P-104在13:00 5.1>5.0，超标。
+
+我可以在表格中包含所有有备注的记录，或者所有振动>阈值的记录。最好都包含，或者分两个表格。为了简洁，做一个"异常事件明细"表格，包含所有note_severity>0或vibration>threshold的记录。
+
+让我检查一下哪些记录满足：
+P-101:
+- 11:00: 4.2<4.5, 但有备注，severity 1
+- 12:00: 4.7>4.5, 有备注，severity 2
+- 13:00: 5.1>4.5, 有备注，severity 4
+P-104:
+- 13:00: 5.1>5.0, 有备注，severity 3
+
+还有振动超过阈值但没有备注的：
+P-101:
+- 14:00: 4.9>4.5, 无备注
+P-104:
+- 12:00: 4.8>5.0? 不，4.8<5.0
+- 14:00: 5.3>5.0, 无备注
+- 15:00: 5.2>5.0, 无备注
+
+所以超标记录：
+P-101: 12:00(4.7), 13:00(5.1), 14:00(4.9) → 3条
+P-104: 13:00(5.1), 14:00(5.3), 15:00(5.2) → 3条
+
+我会把这些都放进表格，并高亮显示。
+
+HTML结构细节：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备监控数据分析报告</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --success: #2ecc71;
+        }
+        body {
+            background: #f4f6f9;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            color: #333;
+        }
+        .navbar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 5px solid var(--accent);
+            height: 100%;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .kpi-card.danger { border-left-color: var(--danger); }
+        .kpi-card.warning { border-left-color: var(--warning); }
+        .kpi-card.success { border-left-color: var(--success); }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .kpi-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            padding-left: 1rem;
+            border-left: 4px solid var(--accent);
+        }
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+        .alert-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-critical { background: #fee; color: #c0392b; }
+        .badge-warning { background: #fff3e0; color: #e65100; }
+        .badge-normal { background: #e8f5e9; color: #2e7d32; }
+        .table thead th {
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+        .insight-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 1.25rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1rem;
+        }
+        .recommendation-item {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid var(--success);
+        }
+        .recommendation-item.critical {
+            border-left-color: var(--danger);
+            background: #fdf2f2;
+        }
+        .recommendation-item.warning {
+            border-left-color: var(--warning);
+            background: #fffbf0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">🔧 设备智能监控分析平台</a>
+            <span class="navbar-text text-white">报告日期：2025-02-01</span>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-5 fw-bold mb-3">设备运行状态分析报告</h1>
+            <p class="lead mb-0">基于实时振动与温度传感器数据的综合诊断 | 分析时段：2025-02-01 08:00 - 15:00</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- KPI Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">监控设备</div>
+                    <div class="kpi-value">7<span class="fs-5 text-muted">台</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">数据记录</div>
+                    <div class="kpi-value">50<span class="fs-5 text-muted">条</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card warning">
+                    <div class="kpi-label">平均振动</div>
+                    <div class="kpi-value">3.49</div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card danger">
+                    <div class="kpi-label">异常报警</div>
+                    <div class="kpi-value text-danger">6<span class="fs-5 text-muted">次</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">最高温度</div>
+                    <div class="kpi-value">59.5<span class="fs-5 text-muted">°C</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card danger">
+                    <div class="kpi-label">异常设备</div>
+                    <div class="kpi-value text-danger">2<span class="fs-5 text-muted">台</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <div class="section-card">
+            <h2 class="section-title">执行摘要</h2>
+            <div class="row">
+                <div class="col-lg-8">
+                    <p class="fs-5">本次分析覆盖<strong>7台关键动设备</strong>，累计采集<strong>50条</strong>高频监控记录。通过振动速度有效值与表面温度的联合分析，识别出<strong class="text-danger">2台设备处于异常状态</strong>，需立即关注。</p>
+                    <div class="insight-box">
+                        <strong>核心发现：</strong> P-101泵组振动持续超标（峰值5.1 mm/s），伴随严重等级递增的异常声响（最高至"紧急检查"）；P-104在午后出现连续振动超限（峰值5.3 mm/s）及"噪音增大"异常。F-201虽然未超报警阈值，但振动绝对值最高（5.5 mm/s）且温度达到59.5°C，处于高风险边缘。
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="section-card h-100">
+                    <h2 class="section-title">振动趋势时序分析</h2>
+                    <div class="chart-container">
+                        <canvas id="vibrationTrendChart"></canvas>
+                    </div>
+                    <p class="text-muted mt-2 small">* 红色与橙色曲线分别代表存在异常报警的P-101与P-104设备</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="section-card h-100">
+                    <h2 class="section-title">设备平均振动与阈值对比</h2>
+                    <div class="chart-container">
+                        <canvas id="thresholdChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="section-card h-100">
+                    <h2 class="section-title">温度变化趋势</h2>
+                    <div class="chart-container">
+                        <canvas id="tempTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="section-card h-100">
+                    <h2 class="section-title">各设备报警频次分布</h2>
+                    <div class="chart-container">
+                        <canvas id="alarmFreqChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Analysis -->
+        <div class="section-card">
+            <h2 class="section-title">详细数据分析与洞察</h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5 class="fw-bold text-primary mb-3">设备运行状态分级</h5>
+                    <table class="table table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>设备编号</th>
+                                <th>平均振动</th>
+                                <th>最大振动</th>
+                                <th>报警阈值</th>
+                                <th>状态评估</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-danger">
+                                <td><strong>P-101</strong></td>
+                                <td>4.25</td>
+                                <td class="text-danger fw-bold">5.1</td>
+                                <td>4.5</td>
+                                <td><span class="alert-badge badge-critical">紧急</span></td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td><strong>P-104</strong></td>
+                                <td>4.63</td>
+                                <td class="text-danger fw-bold">5.3</td>
+                                <td>5.0</td>
+                                <td><span class="alert-badge badge-warning">警告</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>F-201</strong></td>
+                                <td>4.84</td>
+                                <td>5.5</td>
+                                <td>6.0</td>
+                                <td><span class="alert-badge badge-warning">关注</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>F-202</strong></td>
+                                <td>3.24</td>
+                                <td>3.8</td>
+                                <td>5.5</td>
+                                <td><span class="alert-badge badge-normal">正常</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P-102</strong></td>
+                                <td>2.36</td>
+                                <td>2.6</td>
+                                <td>5.0</td>
+                                <td><span class="alert-badge badge-normal">正常</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P-103</strong></td>
+                                <td>1.98</td>
+                                <td>2.2</td>
+                                <td>4.0</td>
+                                <td><span class="alert-badge badge-normal">正常</span></td>
+                            </tr>
+                            <tr class="table-secondary">
+                                <td><strong>P-105</strong></td>
+                                <td>2.10</td>
+                                <td>2.2</td>
+                                <td>4.5</td>
+                                <td><span class="alert-badge badge-normal">数据不全</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-lg-6">
+                    <h5 class="fw-bold text-primary mb-3">异常事件时间线</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>时间</th>
+                                    <th>设备</th>
+                                    <th>振动</th>
+                                    <th>温度</th>
+                                    <th>事件描述</th>
+                                    <th>等级</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="table-danger">
+                                    <td>13:00</td>
+                                    <td>P-101</td>
+                                    <td>5.1</td>
+                                    <td>48.2</td>
+                                    <td>紧急检查</td>
+                                    <td><span class="badge bg-danger">4</span></td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td>13:00</td>
+                                    <td>P-104</td>
+                                    <td>5.1</td>
+                                    <td>54.0</td>
+                                    <td>噪音增大</td>
+                                    <td><span class="badge bg-warning text-dark">3</span></td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td>12:00</td>
+                                    <td>P-101</td>
+                                    <td>4.7</td>
+                                    <td>47.0</td>
+                                    <td>异响明显</td>
+                                    <td><span class="badge bg-warning text-dark">2</span></td>
+                                </tr>
+                                <tr>
+                                    <td>14:00</td>
+                                    <td>P-104</td>
+                                    <td class="text-danger">5.3</td>
+                                    <td>54.8</td>
+                                    <td>振动超标</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>15:00</td>
+                                    <td>P-104</td>
+                                    <td class="text-danger">5.2</td>
+                                    <td>54.5</td>
+                                    <td>振动超标</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>14:00</td>
+                                    <td>P-101</td>
+                                    <td class="text-danger">4.9</td>
+                                    <td>48.0</td>
+                                    <td>振动超标</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>11:00</td>
+                                    <td>P-101</td>
+                                    <td>4.2</td>
+                                    <td>46.5</td>
+                                    <td>异响轻微</td>
+                                    <td><span class="badge bg-info text-dark">1</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="section-card mb-5">
+            <h2 class="section-title">维护建议与结论</h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="recommendation-item critical">
+                        <h6 class="fw-bold text-danger">🔴 紧急处理 - P-101 泵组</h6>
+                        <p class="mb-0 small">振动峰值达5.1 mm/s且伴随严重异响，存在轴承损坏或转子不平衡风险。建议<strong>立即安排停机</strong>，进行动平衡检测与轴承拆解检查。</p>
+                    </div>
+                    <div class="recommendation-item warning">
+                        <h6 class="fw-bold text-warning">🟠 优先处理 - P-104 设备</h6>
+                        <p class="mb-0 small">连续3个时段振动超过5.0 mm/s阈值，且温度升至54.8°C。建议24小时内完成机械密封、联轴器对中及轴承状态检查。</p>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="recommendation-item warning">
+                        <h6 class="fw-bold text-warning">🟡 重点关注 - F-201 风机</h6>
+                        <p class="mb-0 small">虽未超阈值，但振动绝对值最高（5.5）且温度接近60°C。建议增加巡检频次至每2小时一次，监控上升趋势。</p>
+                    </div>
+                    <div class="recommendation-item">
+                        <h6 class="fw-bold text-success">🟢 日常管理</h6>
+                        <p class="mb-0 small">P-102、F-202、P-103运行平稳。P-105数据采集不完整（仅2条），需排查通讯或传感器故障，确保监控连续性。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 text-muted small">
+         设备智能监控分析平台 | 数据最后更新：2025-02-01 15:00
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Common options
+        Chart.defaults.font.family = "'Segoe UI', 'Microsoft YaHei', sans-serif";
+        Chart.defaults.color = '#666';
+        
+        const timeLabels = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'];
+        
+        // Vibration Trend Chart
+        const ctxVib = document.getElementById('vibrationTrendChart').getContext('2d');
+        new Chart(ctxVib, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    { label: 'P-101', data: [3.2,3.5,3.8,4.2,4.7,5.1,4.9,4.6], borderColor: '#e74c3c', backgroundColor: '#e74c3c', tension: 0.3, pointRadius: 4 },
+                    { label: 'P-102', data: [2.1,2.3,2.5,2.6,2.4,2.2,2.3,2.5], borderColor: '#3498db', backgroundColor: '#3498db', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-201', data: [4.1,4.3,4.5,4.8,5.2,5.5,5.3,5.0], borderColor: '#f39c12', backgroundColor: '#f39c12', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-202', data: [2.8,2.9,3.0,3.1,3.3,3.4,3.6,3.8], borderColor: '#2ecc71', backgroundColor: '#2ecc71', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-103', data: [1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2], borderColor: '#9b59b6', backgroundColor: '#9b59b6', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-104', data: [3.9,4.0,4.2,4.5,4.8,5.1,5.3,5.2], borderColor: '#e67e22', backgroundColor: '#e67e22', tension: 0.3, pointRadius: 4 },
+                    { label: 'P-105', data: [2.0,2.2,null,null,null,null,null,null], borderColor: '#1abc9c', backgroundColor: '#1abc9c', tension: 0.3, pointRadius: 3, spanGaps: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
+                    tooltip: { backgroundColor: 'rgba(44,62,80,0.9)', padding: 12 }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '振动速度 (mm/s)' }, grid: { color: '#f0f0f0' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Threshold Comparison Chart
+        const ctxThresh = document.getElementById('thresholdChart').getContext('2d');
+        new Chart(ctxThresh, {
+            type: 'bar',
+            data: {
+                labels: ['P-101', 'P-102', 'F-201', 'F-202', 'P-103', 'P-104', 'P-105'],
+                datasets: [
+                    { 
+                        label: '平均振动', 
+                        data: [4.25, 2.36, 4.84, 3.24, 1.98, 4.63, 2.1], 
+                        backgroundColor: ['#e74c3c','#3498db','#f39c12','#2ecc71','#9b59b6','#e67e22','#1abc9c'],
+                        borderRadius: 6
+                    },
+                    {
+                        label: '报警阈值',
+                        data: [4.5, 5.0, 6.0, 5.5, 4.0, 5.0, 4.5],
+                        type: 'line',
+                        borderColor: '#2c3e50',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointStyle: 'rectRot',
+                        pointRadius: 6,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '振动速度 (mm/s)' } }
+                }
+            }
+        });
+
+        // Temperature Trend Chart
+        const ctxTemp = document.getElementById('tempTrendChart').getContext('2d');
+        new Chart(ctxTemp, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    { label: 'P-101', data: [45.2,45.8,46.1,46.5,47.0,48.2,48.0,47.5], borderColor: '#e74c3c', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-102', data: [38.5,39.0,39.4,40.2,39.8,39.5,39.3,39.6], borderColor: '#3498db', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-201', data: [55.0,55.8,56.2,57.1,58.0,59.5,59.0,58.2], borderColor: '#f39c12', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-202', data: [42.0,42.5,43.0,43.2,43.8,44.5,45.0,45.6], borderColor: '#2ecc71', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-103', data: [30.2,30.5,31.0,31.2,31.5,32.0,32.3,32.5], borderColor: '#9b59b6', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-104', data: [50.0,50.5,51.2,52.0,53.1,54.0,54.8,54.5], borderColor: '#e67e22', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-105', data: [33.0,33.5,null,null,null,null,null,null], borderColor: '#1abc9c', tension: 0.3, pointRadius: 3, spanGaps: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
+                scales: {
+                    y: { beginAtZero: false, title: { display: true, text: '温度 (°C)' }, grid: { color: '#f0f0f0' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Alarm Frequency Chart
+        const ctxAlarm = document.getElementById('alarmFreqChart').getContext('2d');
+        new Chart(ctxAlarm, {
+            type: 'bar',
+            data: {
+                labels: ['P-101', 'P-102', 'F-201', 'F-202', 'P-103', 'P-104', 'P-105'],
+                datasets: [{
+                    label: '报警次数',
+                    data: [3, 0, 0, 0, 0, 3, 0],
+                    backgroundColor: [
+                        '#e74c3c', '#2ecc71', '#95a5a6', '#95a5a6', '#95a5a6', '#e67e22', '#95a5a6'
+                    ],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: '次数' } }
+                }
+            }
+        });
+
+        // Status Doughnut Chart (in summary)
+        const ctxStatus = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '警告', '紧急'],
+                datasets: [{
+                    data: [4, 1, 1],
+                    backgroundColor: ['#2ecc71', '#f39c12', '#e74c3c'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+```
+
+等等，我注意到P-105在thresholdChart中的平均振动是2.1，但只基于2个数据点。这没问题。
+
+我需要确保statusChart的容器有高度。在HTML中，我把它放在col-lg-4里，但没有指定高度。canvas需要高度。我可以在外面的div加style="height: 250px;"，或者让canvas响应。在Bootstrap的grid里，如果不指定高度，canvas可能会塌陷。我应该在包含canvas的div上加一个高度。
+
+让我修改：
+```html
+<div class="col-lg-4">
+    <div style="height: 250px;">
+        <canvas id="statusChart"></canvas>
+    </div>
+</div>
+```
+
+同样，所有chart-container已经设置了height: 350px，所以没问题。
+
+检查P-101的平均振动计算：34/8=4.25。正确。
+P-104: 37/8=4.625。我之前写的是4.63，可以。
+F-201: 38.7/8=4.8375。我写的是4.84。可以。
+
+在thresholdChart中，P-104的平均振动柱子是4.63，阈值线是5.0。看起来正常。
+
+在详细表格中，P-104的平均振动我写的是4.63，最大振动5.3。对。
+
+在异常事件时间线中，我列出了7条记录。P-101有4条（11,12,13,14），P-104有3条（13,14,15）。等等，P-101在11:00是4.2，低于阈值4.5，但有备注"异响轻微"（severity 1）。我把它放进去了，标注等级1。P-101在14:00是4.9>4.5，无备注，放进去。P-104在13:00有备注，14:00和15:00无备注但超标。这样表格有7行，合理。
+
+等等，P-101 11:00的振动是4.2，小于4.5。我表格里写的是4.2，没有标红。对。
+
+我需要确保所有文本都是中文，且专业。
+
+再检查强制规则：
+1. 禁止输出XML标签 - 我没有
+2. 禁止输出解释、分析、思考过程 - 我只输出HTML
+3. 禁止输出Markdown代码块标记 - 我没有
+4. 第一个字符必须是`<`，最后两个字符必须是`>` - 我的HTML以`<!DOCTYPE html>`开头，以`</html>`结尾，满足
+5. 直接输出纯HTML - 满足
+
+等等，规则说"第一个字符必须是 `<`"。`<!DOCTYPE html>`的第一个字符是`<`，满足。最后两个字符是`>`，`</html>`的最后是`>`，满足。
+
+我需要确保没有前导空格或换行。我应该直接从`<!DOCTYPE html>`开始。
+
+让我再检查Chart.js的代码是否有错误。
+- vibrationTrendChart: spanGaps: false 是默认的，明确写也可以。
+- tempTrendChart: 同样。
+- thresholdChart: 混合图表，bar和line。正确。
+- alarmFreqChart: 数据[3,0,0,0,0,3,0]，背景色对应。正确。
+- statusChart: doughnut，数据[4,1,1]对应正常/警告/紧急。F-201是警告（1），P-101紧急（1），其余4台正常。对。
+
+在statusChart的labels中，我写了['正常', '警告', '紧急']。F-201算警告，P-101算紧急，其余正常（包括数据不全的P-105）。这样数据[4,1,1]是对的。
+
+再检查P-105的数据：只有08:00和09:00。在折线图中用null表示后续缺失，spanGaps设为false，这样线会在第二个点后断开。正确。
+
+颜色协调：整体使用蓝色、紫色、红色、橙色、绿色，看起来协调。
+
+让我看看是否有任何可能的改进：
+- 在vibrationTrendChart中，可以给P-101和P-104加粗线条？Chart.js里可以通过borderWidth实现。我当前默认是2（或3）。我可以给它们设borderWidth: 3，其他设2。不过当前已经通过pointRadius区分了。这样也可以。
+
+- 在KPI卡片中，P-105的数据缺失我应该提一下。我在建议里提到了。
+
+- 执行摘要的文字："P-101泵组" - 实际上设备编号是P-101、P-102等，P可能代表Pump，F可能代表Fan。我这样称呼是合理的。
+
+- 最高温度59.5°C在KPI中显示，正确。
+
+- 报警6次在KPI中显示，正确。
+
+- 在thresholdChart中，P-101的平均振动4.25看起来低于阈值4.5，这是因为早期数据较低拉低了平均。但其峰值明显超过。这个图表可能有点误导，不过加上阈值线后，管理者能看出P-101的平均值已接近阈值。P-104的平均4.63也低于5.0，但接近。我可以在文本中说明"平均值虽略低于阈值，但峰值已严重超标"。或者，我可以把"平均振动"改成"最大振动"？不，最大振动对比阈值更有意义。让我修改thresholdChart的数据为最大振动而不是平均振动。
+
+最大振动：
+P-101: 5.1
+P-102: 2.6
+F-201: 5.5
+F-202: 3.8
+P-103: 2.2
+P-104: 5.3
+P-105: 2.2
+
+这样对比更直观，能立即看出哪些设备超过或接近阈值。
+
+修改：
+```javascript
+{ 
+    label: '最大振动', 
+    data: [5.1, 2.6, 5.5, 3.8, 2.2, 5.3, 2.2], 
+    ...
+}
+```
+同时修改图表标题为"设备最大振动与阈值对比"。
+
+这样更好。我修改一下。
+
+另外，在详细表格中，P-101和P-104的状态评估，P-101是紧急，P-104是警告。F-201是关注。其他正常。
+
+好的，我现在确定代码内容。确保没有语法错误。
+
+再检查温度数据：
+P-101: 45.2,45.8,46.1,46.5,47.0,48.2,48.0,47.5 - 正确
+P-102: 38.5,39.0,39.4,40.2,39.8,39.5,39.3,39.6 - 正确
+F-201: 55.0,55.8,56.2,57.1,58.0,59.5,59.0,58.2 - 正确
+F-202: 42.0,42.5,43.0,43.2,43.8,44.5,45.0,45.6 - 正确
+P-103: 30.2,30.5,31.0,31.2,31.5,32.0,32.3,32.5 - 正确
+P-104: 50.0,50.5,51.2,52.0,53.1,54.0,54.8,54.5 - 正确
+P-105: 33.0,33.5 - 正确
+
+振动数据：
+P-101: 3.2,3.5,3.8,4.2,4.7,5.1,4.9,4.6 - 正确
+P-102: 2.1,2.3,2.5,2.6,2.4,2.2,2.3,2.5 - 正确
+F-201: 4.1,4.3,4.5,4.8,5.2,5.5,5.3,5.0 - 正确
+F-202: 2.8,2.9,3.0,3.1,3.3,3.4,3.6,3.8 - 正确
+P-103: 1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2 - 正确
+P-104: 3.9,4.0,4.2,4.5,4.8,5.1,5.3,5.2 - 正确
+P-105: 2.0,2.2 - 正确
+
+一切看起来都没问题。我将输出完整的HTML代码。
+</think><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备监控数据分析报告</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #3498db;
+            --danger: #e74c3c;
+            --warning: #f39c12;
+            --success: #2ecc71;
+        }
+        body {
+            background: #f4f6f9;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            color: #333;
+        }
+        .navbar {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 20px 20px;
+        }
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 5px solid var(--accent);
+            height: 100%;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .kpi-card.danger { border-left-color: var(--danger); }
+        .kpi-card.warning { border-left-color: var(--warning); }
+        .kpi-card.success { border-left-color: var(--success); }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .kpi-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            padding-left: 1rem;
+            border-left: 4px solid var(--accent);
+        }
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+        .alert-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-critical { background: #fee; color: #c0392b; }
+        .badge-warning { background: #fff3e0; color: #e65100; }
+        .badge-normal { background: #e8f5e9; color: #2e7d32; }
+        .table thead th {
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+        .insight-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 1.25rem;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 1rem;
+        }
+        .recommendation-item {
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            border-left: 3px solid var(--success);
+        }
+        .recommendation-item.critical {
+            border-left-color: var(--danger);
+            background: #fdf2f2;
+        }
+        .recommendation-item.warning {
+            border-left-color: var(--warning);
+            background: #fffbf0;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">设备智能监控分析平台</a>
+            <span class="navbar-text text-white">报告日期：2025-02-01</span>
+        </div>
+    </nav>
+
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-5 fw-bold mb-3">设备运行状态分析报告</h1>
+            <p class="lead mb-0">基于实时振动与温度传感器数据的综合诊断 | 分析时段：2025-02-01 08:00 - 15:00</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row g-4 mb-4">
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">监控设备</div>
+                    <div class="kpi-value">7<span class="fs-5 text-muted">台</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">数据记录</div>
+                    <div class="kpi-value">50<span class="fs-5 text-muted">条</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card warning">
+                    <div class="kpi-label">平均振动</div>
+                    <div class="kpi-value">3.49</div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card danger">
+                    <div class="kpi-label">异常报警</div>
+                    <div class="kpi-value text-danger">6<span class="fs-5 text-muted">次</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card">
+                    <div class="kpi-label">最高温度</div>
+                    <div class="kpi-value">59.5<span class="fs-5 text-muted">°C</span></div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="kpi-card danger">
+                    <div class="kpi-label">异常设备</div>
+                    <div class="kpi-value text-danger">2<span class="fs-5 text-muted">台</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <h2 class="section-title">执行摘要</h2>
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <p class="fs-5">本次分析覆盖<strong>7台关键动设备</strong>，累计采集<strong>50条</strong>高频监控记录。通过振动速度有效值与表面温度的联合分析，识别出<strong class="text-danger">2台设备处于异常状态</strong>，需立即关注。</p>
+                    <div class="insight-box">
+                        <strong>核心发现：</strong> P-101泵组振动持续超标（峰值5.1 mm/s），伴随严重等级递增的异常声响（最高至"紧急检查"）；P-104在午后出现连续振动超限（峰值5.3 mm/s）及"噪音增大"异常。F-201虽然未超报警阈值，但振动绝对值最高（5.5 mm/s）且温度达到59.5°C，处于高风险边缘。
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div style="height: 250px;">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="section-card h-100">
+                    <h2 class="section-title">振动趋势时序分析</h2>
+                    <div class="chart-container">
+                        <canvas id="vibrationTrendChart"></canvas>
+                    </div>
+                    <p class="text-muted mt-2 small">* 红色与橙色曲线分别代表存在异常报警的P-101与P-104设备</p>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="section-card h-100">
+                    <h2 class="section-title">设备最大振动与阈值对比</h2>
+                    <div class="chart-container">
+                        <canvas id="thresholdChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="section-card h-100">
+                    <h2 class="section-title">温度变化趋势</h2>
+                    <div class="chart-container">
+                        <canvas id="tempTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="section-card h-100">
+                    <h2 class="section-title">各设备报警频次分布</h2>
+                    <div class="chart-container">
+                        <canvas id="alarmFreqChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <h2 class="section-title">详细数据分析与洞察</h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <h5 class="fw-bold text-primary mb-3">设备运行状态分级</h5>
+                    <table class="table table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>设备编号</th>
+                                <th>平均振动</th>
+                                <th>最大振动</th>
+                                <th>报警阈值</th>
+                                <th>状态评估</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-danger">
+                                <td><strong>P-101</strong></td>
+                                <td>4.25</td>
+                                <td class="text-danger fw-bold">5.1</td>
+                                <td>4.5</td>
+                                <td><span class="alert-badge badge-critical">紧急</span></td>
+                            </tr>
+                            <tr class="table-warning">
+                                <td><strong>P-104</strong></td>
+                                <td>4.63</td>
+                                <td class="text-danger fw-bold">5.3</td>
+                                <td>5.0</td>
+                                <td><span class="alert-badge badge-warning">警告</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>F-201</strong></td>
+                                <td>4.84</td>
+                                <td>5.5</td>
+                                <td>6.0</td>
+                                <td><span class="alert-badge badge-warning">关注</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>F-202</strong></td>
+                                <td>3.24</td>
+                                <td>3.8</td>
+                                <td>5.5</td>
+                                <td><span class="alert-badge badge-normal">正常</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P-102</strong></td>
+                                <td>2.36</td>
+                                <td>2.6</td>
+                                <td>5.0</td>
+                                <td><span class="alert-badge badge-normal">正常</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>P-103</strong></td>
+                                <td>1.98</td>
+                                <td>2.2</td>
+                                <td>4.0</td>
+                                <td><span class="alert-badge badge-normal">正常</span></td>
+                            </tr>
+                            <tr class="table-secondary">
+                                <td><strong>P-105</strong></td>
+                                <td>2.10</td>
+                                <td>2.2</td>
+                                <td>4.5</td>
+                                <td><span class="alert-badge badge-normal">数据不全</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="col-lg-6">
+                    <h5 class="fw-bold text-primary mb-3">异常事件时间线</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>时间</th>
+                                    <th>设备</th>
+                                    <th>振动</th>
+                                    <th>温度</th>
+                                    <th>事件描述</th>
+                                    <th>等级</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="table-danger">
+                                    <td>13:00</td>
+                                    <td>P-101</td>
+                                    <td>5.1</td>
+                                    <td>48.2</td>
+                                    <td>紧急检查</td>
+                                    <td><span class="badge bg-danger">4</span></td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td>13:00</td>
+                                    <td>P-104</td>
+                                    <td>5.1</td>
+                                    <td>54.0</td>
+                                    <td>噪音增大</td>
+                                    <td><span class="badge bg-warning text-dark">3</span></td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td>12:00</td>
+                                    <td>P-101</td>
+                                    <td>4.7</td>
+                                    <td>47.0</td>
+                                    <td>异响明显</td>
+                                    <td><span class="badge bg-warning text-dark">2</span></td>
+                                </tr>
+                                <tr>
+                                    <td>14:00</td>
+                                    <td>P-104</td>
+                                    <td class="text-danger">5.3</td>
+                                    <td>54.8</td>
+                                    <td>振动超标</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>15:00</td>
+                                    <td>P-104</td>
+                                    <td class="text-danger">5.2</td>
+                                    <td>54.5</td>
+                                    <td>振动超标</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>14:00</td>
+                                    <td>P-101</td>
+                                    <td class="text-danger">4.9</td>
+                                    <td>48.0</td>
+                                    <td>振动超标</td>
+                                    <td><span class="badge bg-secondary">-</span></td>
+                                </tr>
+                                <tr>
+                                    <td>11:00</td>
+                                    <td>P-101</td>
+                                    <td>4.2</td>
+                                    <td>46.5</td>
+                                    <td>异响轻微</td>
+                                    <td><span class="badge bg-info text-dark">1</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-card mb-5">
+            <h2 class="section-title">维护建议与结论</h2>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="recommendation-item critical">
+                        <h6 class="fw-bold text-danger">紧急处理 - P-101 泵组</h6>
+                        <p class="mb-0 small">振动峰值达5.1 mm/s且伴随严重异响，存在轴承损坏或转子不平衡风险。建议<strong>立即安排停机</strong>，进行动平衡检测与轴承拆解检查。</p>
+                    </div>
+                    <div class="recommendation-item warning">
+                        <h6 class="fw-bold text-warning">优先处理 - P-104 设备</h6>
+                        <p class="mb-0 small">连续3个时段振动超过5.0 mm/s阈值，且温度升至54.8°C。建议24小时内完成机械密封、联轴器对中及轴承状态检查。</p>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="recommendation-item warning">
+                        <h6 class="fw-bold text-warning">重点关注 - F-201 风机</h6>
+                        <p class="mb-0 small">虽未超阈值，但振动绝对值最高（5.5）且温度接近60°C。建议增加巡检频次至每2小时一次，监控上升趋势。</p>
+                    </div>
+                    <div class="recommendation-item">
+                        <h6 class="fw-bold text-success">日常管理</h6>
+                        <p class="mb-0 small">P-102、F-202、P-103运行平稳。P-105数据采集不完整（仅2条），需排查通讯或传感器故障，确保监控连续性。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="text-center py-4 text-muted small">
+         设备智能监控分析平台 | 数据最后更新：2025-02-01 15:00
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        Chart.defaults.font.family = "'Segoe UI', 'Microsoft YaHei', sans-serif";
+        Chart.defaults.color = '#666';
+        
+        const timeLabels = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'];
+        
+        const ctxVib = document.getElementById('vibrationTrendChart').getContext('2d');
+        new Chart(ctxVib, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    { label: 'P-101', data: [3.2,3.5,3.8,4.2,4.7,5.1,4.9,4.6], borderColor: '#e74c3c', backgroundColor: '#e74c3c', tension: 0.3, pointRadius: 4, borderWidth: 3 },
+                    { label: 'P-102', data: [2.1,2.3,2.5,2.6,2.4,2.2,2.3,2.5], borderColor: '#3498db', backgroundColor: '#3498db', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-201', data: [4.1,4.3,4.5,4.8,5.2,5.5,5.3,5.0], borderColor: '#f39c12', backgroundColor: '#f39c12', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-202', data: [2.8,2.9,3.0,3.1,3.3,3.4,3.6,3.8], borderColor: '#2ecc71', backgroundColor: '#2ecc71', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-103', data: [1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2], borderColor: '#9b59b6', backgroundColor: '#9b59b6', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-104', data: [3.9,4.0,4.2,4.5,4.8,5.1,5.3,5.2], borderColor: '#e67e22', backgroundColor: '#e67e22', tension: 0.3, pointRadius: 4, borderWidth: 3 },
+                    { label: 'P-105', data: [2.0,2.2,null,null,null,null,null,null], borderColor: '#1abc9c', backgroundColor: '#1abc9c', tension: 0.3, pointRadius: 3, spanGaps: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } },
+                    tooltip: { backgroundColor: 'rgba(44,62,80,0.9)', padding: 12 }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '振动速度 (mm/s)' }, grid: { color: '#f0f0f0' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const ctxThresh = document.getElementById('thresholdChart').getContext('2d');
+        new Chart(ctxThresh, {
+            type: 'bar',
+            data: {
+                labels: ['P-101', 'P-102', 'F-201', 'F-202', 'P-103', 'P-104', 'P-105'],
+                datasets: [
+                    { 
+                        label: '最大振动', 
+                        data: [5.1, 2.6, 5.5, 3.8, 2.2, 5.3, 2.2], 
+                        backgroundColor: ['#e74c3c','#3498db','#f39c12','#2ecc71','#9b59b6','#e67e22','#1abc9c'],
+                        borderRadius: 6
+                    },
+                    {
+                        label: '报警阈值',
+                        data: [4.5, 5.0, 6.0, 5.5, 4.0, 5.0, 4.5],
+                        type: 'line',
+                        borderColor: '#2c3e50',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointStyle: 'rectRot',
+                        pointRadius: 6,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '振动速度 (mm/s)' } }
+                }
+            }
+        });
+
+        const ctxTemp = document.getElementById('tempTrendChart').getContext('2d');
+        new Chart(ctxTemp, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    { label: 'P-101', data: [45.2,45.8,46.1,46.5,47.0,48.2,48.0,47.5], borderColor: '#e74c3c', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-102', data: [38.5,39.0,39.4,40.2,39.8,39.5,39.3,39.6], borderColor: '#3498db', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-201', data: [55.0,55.8,56.2,57.1,58.0,59.5,59.0,58.2], borderColor: '#f39c12', tension: 0.3, pointRadius: 3 },
+                    { label: 'F-202', data: [42.0,42.5,43.0,43.2,43.8,44.5,45.0,45.6], borderColor: '#2ecc71', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-103', data: [30.2,30.5,31.0,31.2,31.5,32.0,32.3,32.5], borderColor: '#9b59b6', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-104', data: [50.0,50.5,51.2,52.0,53.1,54.0,54.8,54.5], borderColor: '#e67e22', tension: 0.3, pointRadius: 3 },
+                    { label: 'P-105', data: [33.0,33.5,null,null,null,null,null,null], borderColor: '#1abc9c', tension: 0.3, pointRadius: 3, spanGaps: false }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } },
+                scales: {
+                    y: { beginAtZero: false, title: { display: true, text: '温度 (°C)' }, grid: { color: '#f0f0f0' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const ctxAlarm = document.getElementById('alarmFreqChart').getContext('2d');
+        new Chart(ctxAlarm, {
+            type: 'bar',
+            data: {
+                labels: ['P-101', 'P-102', 'F-201', 'F-202', 'P-103', 'P-104', 'P-105'],
+                datasets: [{
+                    label: '报警次数',
+                    data: [3, 0, 0, 0, 0, 3, 0],
+                    backgroundColor: [
+                        '#e74c3c', '#2ecc71', '#95a5a6', '#95a5a6', '#95a5a6', '#e67e22', '#95a5a6'
+                    ],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: '次数' } }
+                }
+            }
+        });
+
+        const ctxStatus = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '警告', '紧急'],
+                datasets: [{
+                    data: [4, 1, 1],
+                    backgroundColor: ['#2ecc71', '#f39c12', '#e74c3c'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
