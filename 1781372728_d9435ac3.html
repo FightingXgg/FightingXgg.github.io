@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工业设备振动与温度监测分析报告</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --bg-light: #f8f9fa;
+            --card-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            scroll-behavior: smooth;
+        }
+
+        /* Navbar Styling */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary-color), #1a252f);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1rem 0;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        /* Hero / Summary Section */
+        .hero-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: var(--card-shadow);
+            border-left: 5px solid var(--secondary-color);
+        }
+
+        /* KPI Cards */
+        .kpi-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            border: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+        .kpi-icon {
+            font-size: 2.5rem;
+            opacity: 0.2;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+        }
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .kpi-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .text-danger-custom { color: var(--accent-color); }
+        .text-success-custom { color: var(--success-color); }
+        .text-warning-custom { color: #f39c12; }
+
+        /* Chart Containers */
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            position: relative;
+            height: 400px;
+        }
+        .chart-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Insights Box */
+        .insight-box {
+            background: #e8f4fd;
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+            font-size: 0.95rem;
+        }
+        .insight-box.alert-critical {
+            background: #fdecea;
+            border-left-color: var(--accent-color);
+        }
+
+        /* Table Styling */
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+        .table thead th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            border: none;
+        }
+        .severity-badge {
+            padding: 0.3em 0.6em;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .sev-0 { background: #e9ecef; color: #495057; }
+        .sev-1 { background: #fff3cd; color: #856404; }
+        .sev-2 { background: #ffeeba; color: #856404; }
+        .sev-3 { background: #f5c6cb; color: #721c24; }
+        .sev-4 { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #ccc; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #aaa; 
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-industry me-2"></i>设备健康监测中心</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link active" href="#summary">执行摘要</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#kpi">关键指标</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#analysis">详细分析</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#trends">趋势预测</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#recommendations">维护建议</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+
+        <!-- Header & Summary -->
+        <section id="summary" class="hero-section animate-fade-in">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="mb-3">设备运行状态分析报告</h2>
+                    <p class="lead text-muted mb-2">监测周期：2025年2月1日 08:00 - 15:00</p>
+                    <p class="mb-0">本报告基于实时传感器数据分析了5台关键设备（P-101至P-105及F-201/202）的运行状态。分析发现，<strong class="text-danger-custom">P-101 和 P-104</strong> 在监测周期内出现了明显的振动超标及异常声响，需立即关注。其余设备运行平稳。</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="d-inline-block p-3 rounded-circle bg-light">
+                        <i class="fas fa-clipboard-check fa-4x text-secondary"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI Cards -->
+        <section id="kpi" class="row g-4 mb-4">
+            <div class="col-md-3 animate-fade-in delay-1">
+                <div class="kpi-card">
+                    <div class="kpi-icon text-primary"><i class="fas fa-server"></i></div>
+                    <div class="kpi-label">监测设备总数</div>
+                    <div class="kpi-value" id="totalDevices">0</div>
+                    <small class="text-success-custom"><i class="fas fa-check-circle"></i> 全部在线</small>
+                </div>
+            </div>
+            <div class="col-md-3 animate-fade-in delay-2">
+                <div class="kpi-card">
+                    <div class="kpi-icon text-danger"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="kpi-label">异常记录数</div>
+                    <div class="kpi-value text-danger-custom" id="totalAnomalies">0</div>
+                    <small class="text-muted">包含异响与过热</small>
+                </div>
+            </div>
+            <div class="col-md-3 animate-fade-in delay-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon text-warning"><i class="fas fa-wave-square"></i></div>
+                    <div class="kpi-label">最高振动值 (mm/s)</div>
+                    <div class="kpi-value text-warning-custom" id="maxVibration">0.0</div>
+                    <small class="text-muted" id="maxVibDevice">设备: -</small>
+                </div>
+            </div>
+            <div class="col-md-3 animate-fade-in delay-3">
+                <div class="kpi-card">
+                    <div class="kpi-icon text-info"><i class="fas fa-thermometer-half"></i></div>
+                    <div class="kpi-label">最高温度 (°C)</div>
+                    <div class="kpi-value text-info" id="maxTemp">0.0</div>
+                    <small class="text-muted" id="maxTempDevice">设备: -</small>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Analysis Charts -->
+        <section id="analysis" class="row mb-4">
+            <!-- Line Chart: Vibration Trend -->
+            <div class="col-lg-8 mb-4">
+                <div class="chart-container">
+                    <div class="chart-title">
+                        <span><i class="fas fa-chart-line me-2"></i>设备振动趋势对比 (含报警阈值)</span>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary active" onclick="updateLineChart('all')">全部</button>
+                            <button class="btn btn-outline-secondary" onclick="updateLineChart('P-101')">P-101</button>
+                            <button class="btn btn-outline-secondary" onclick="updateLineChart('P-104')">P-104</button>
+                        </div>
+                    </div>
+                    <canvas id="vibrationChart"></canvas>
+                    <div class="insight-box mt-2">
+                        <strong><i class="fas fa-lightbulb me-1"></i> 洞察：</strong> P-101 在12:00-13:00期间振动值突破5.0，远超4.5的阈值，伴随"紧急检查"记录。P-104在午后也出现持续超标。
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bar Chart: Max Vibration per Device -->
+            <div class="col-lg-4 mb-4">
+                <div class="chart-container">
+                    <div class="chart-title">
+                        <span><i class="fas fa-chart-bar me-2"></i>峰值振动统计</span>
+                    </div>
+                    <canvas id="peakVibrationChart"></canvas>
+                    <div class="insight-box mt-2">
+                        <strong><i class="fas fa-info-circle me-1"></i> 分析：</strong> P-101 峰值最高(5.1)，F-201次之(5.5)但阈值较高(6.0)，目前相对安全。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="row mb-4">
+            <!-- Temperature Analysis -->
+            <div class="col-lg-6 mb-4">
+                <div class="chart-container">
+                    <div class="chart-title">
+                        <span><i class="fas fa-temperature-high me-2"></i>设备温度变化趋势</span>
+                    </div>
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
+            <!-- Anomaly Distribution -->
+            <div class="col-lg-6 mb-4">
+                <div class="chart-container">
+                    <div class="chart-title">
+                        <span><i class="fas fa-bell me-2"></i>异常事件严重程度分布</span>
+                    </div>
+                    <div class="row h-100 align-items-center">
+                        <div class="col-md-7">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                        <div class="col-md-5">
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    严重 (Level 4)
+                                    <span class="badge bg-danger rounded-pill" id="countSev4">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    高危 (Level 3)
+                                    <span class="badge bg-warning text-dark rounded-pill" id="countSev3">0</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    警告 (Level 1-2)
+                                    <span class="badge bg-info text-dark rounded-pill" id="countSev12">0</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Detailed Data Table -->
+        <section id="trends" class="mb-5 animate-fade-in">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold"><i class="fas fa-table me-2"></i>详细监测数据日志</h4>
+                <input type="text" id="tableSearch" class="form-control w-auto" placeholder="搜索设备或备注...">
+            </div>
+            <div class="table-card">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>设备编号</th>
+                                <th>时间</th>
+                                <th>振动 (mm/s)</th>
+                                <th>温度 (°C)</th>
+                                <th>阈值</th>
+                                <th>操作员备注</th>
+                                <th>严重等级</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- JS Generated Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recommendations -->
+        <section id="recommendations" class="hero-section animate-fade-in" style="border-left-color: var(--success-color);">
+            <h4 class="fw-bold mb-4"><i class="fas fa-tasks me-2 text-success"></i>维护建议与结论</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="text-danger"><i class="fas fa-wrench me-2"></i>紧急措施</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fas fa-angle-right me-2 text-danger"></i><strong>P-101:</strong> 振动峰值达5.1且伴有严重异响。建议立即停机检查轴承磨损情况及转子动平衡。</li>
+                        <li class="mb-2"><i class="fas fa-angle-right me-2 text-warning"></i><strong>P-104:</strong> 午后振动持续上升并突破阈值。建议安排次日的预防性维护。</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="text-primary"><i class="fas fa-search me-2"></i>常规观察</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="fas fa-angle-right me-2 text-info"></i><strong>F-201:</strong> 虽未报警，但振动值接近阈值(5.5/6.0)，建议增加巡检频率。</li>
+                        <li class="mb-2"><i class="fas fa-angle-right me-2 text-success"></i><strong>P-102, P-103, F-202:</strong> 运行状态良好，各项指标均在安全范围内。</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-muted py-4">
+            <small> 工业设备智能分析系统 | 生成时间: <span id="genTime"></span></small>
+        </footer>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // --- 1. Data Processing ---
+        const rawCSV = `record_id,equipment_id,timestamp,vibration_value,temperature,alarm_threshold,operator_notes,note_severity
+1,P-101,2025-02-01 08:00:00,3.2,45.2,4.5,,0
+2,P-101,2025-02-01 09:00:00,3.5,45.8,4.5,,0
+3,P-101,2025-02-01 10:00:00,3.8,46.1,4.5,,0
+4,P-101,2025-02-01 11:00:00,4.2,46.5,4.5,异响轻微,1
+5,P-101,2025-02-01 12:00:00,4.7,47.0,4.5,异响明显,2
+6,P-101,2025-02-01 13:00:00,5.1,48.2,4.5,紧急检查,4
+7,P-101,2025-02-01 14:00:00,4.9,48.0,4.5,异响明显,2
+8,P-101,2025-02-01 15:00:00,4.6,47.5,4.5,噪音增大,3
+9,P-102,2025-02-01 08:00:00,2.1,38.5,5.0,,0
+10,P-102,2025-02-01 09:00:00,2.3,39.0,5.0,,0
+11,P-102,2025-02-01 10:00:00,2.5,39.4,5.0,,0
+12,P-102,2025-02-01 11:00:00,2.6,40.2,5.0,,0
+13,P-102,2025-02-01 12:00:00,2.4,39.8,5.0,,0
+14,P-102,2025-02-01 13:00:00,2.2,39.5,5.0,,0
+15,P-102,2025-02-01 14:00:00,2.3,39.3,5.0,,0
+16,P-102,2025-02-01 15:00:00,2.5,39.6,5.0,,0
+17,F-201,2025-02-01 08:00:00,4.1,55.0,6.0,,0
+18,F-201,2025-02-01 09:00:00,4.3,55.8,6.0,,0
+19,F-201,2025-02-01 10:00:00,4.5,56.2,6.0,,0
+20,F-201,2025-02-01 11:00:00,4.8,57.1,6.0,,0
+21,F-201,2025-02-01 12:00:00,5.2,58.0,6.0,,0
+22,F-201,2025-02-01 13:00:00,5.5,59.5,6.0,,0
+23,F-201,2025-02-01 14:00:00,5.3,59.0,6.0,,0
+24,F-201,2025-02-01 15:00:00,5.0,58.2,6.0,,0
+25,F-202,2025-02-01 08:00:00,2.8,42.0,5.5,,0
+26,F-202,2025-02-01 09:00:00,2.9,42.5,5.5,,0
+27,F-202,2025-02-01 10:00:00,3.0,43.0,5.5,,0
+28,F-202,2025-02-01 11:00:00,3.1,43.2,5.5,,0
+29,F-202,2025-02-01 12:00:00,3.3,43.8,5.5,,0
+30,F-202,2025-02-01 13:00:00,3.4,44.5,5.5,,0
+31,F-202,2025-02-01 14:00:00,3.6,45.0,5.5,,0
+32,F-202,2025-02-01 15:00:00,3.8,45.6,5.5,,0
+33,P-103,2025-02-01 08:00:00,1.5,30.2,4.0,,0
+34,P-103,2025-02-01 09:00:00,1.6,30.5,4.0,,0
+35,P-103,2025-02-01 10:00:00,1.7,31.0,4.0,,0
+36,P-103,2025-02-01 11:00:00,1.8,31.2,4.0,,0
+37,P-103,2025-02-01 12:00:00,1.9,31.5,4.0,,0
+38,P-103,2025-02-01 13:00:00,2.0,32.0,4.0,,0
+39,P-103,2025-02-01 14:00:00,2.1,32.3,4.0,,0
+40,P-103,2025-02-01 15:00:00,2.2,32.5,4.0,,0
+41,P-104,2025-02-01 08:00:00,3.9,50.0,5.0,,0
+42,P-104,2025-02-01 09:00:00,4.0,50.5,5.0,,0
+43,P-104,2025-02-01 10:00:00,4.2,51.2,5.0,,0
+44,P-104,2025-02-01 11:00:00,4.5,52.0,5.0,,0
+45,P-104,2025-02-01 12:00:00,4.8,53.1,5.0,异响轻微,1
+46,P-104,2025-02-01 13:00:00,5.1,54.0,5.0,噪音增大,3
+47,P-104,2025-02-01 14:00:00,5.3,54.8,5.0,异响明显,2
+48,P-104,2025-02-01 15:00:00,5.2,54.5,5.0,异响明显,2
+49,P-105,2025-02-01 08:00:00,2.0,33.0,4.5,,0
+50,P-105,2025-02-01 09:00:00,2.2,33.5,4.5,,0`;
+
+        function parseCSV(csv) {
+            const lines = csv.trim().split('\n');
+            const headers = lines[0].split(',');
+            const data = [];
+            for(let i = 1; i < lines.length; i++) {
+                const currentline = lines[i].split(',');
+                let obj = {};
+                for(let j = 0; j < headers.length; j++) {
+                    let val = currentline[j];
+                    // Type conversion
+                    if(['record_id', 'note_severity'].includes(headers[j])) val = parseInt(val);
+                    if(['vibration_value', 'temperature', 'alarm_threshold'].includes(headers[j])) val = parseFloat(val);
+                    obj[headers[j]] = val;
+                }
+                data.push(obj);
+            }
+            return data;
+        }
+
+        const data = parseCSV(rawCSV);
+        
+        // --- 2. Data Aggregation & Logic ---
+        
+        // Extract unique devices and times
+        const devices = [...new Set(data.map(d => d.equipment_id))];
+        const timeLabels = [...new Set(data.map(d => d.timestamp.split(' ')[1]))]; // Just HH:MM:SS
+
+        // Calculate KPIs
+        let maxVib = 0, maxVibDev = '', maxTemp = 0, maxTempDev = '', anomalyCount = 0;
+        let severityCounts = {0:0, 1:0, 2:0, 3:0, 4:0};
+        let deviceStats = {}; // For bar chart
+
+        devices.forEach(dev => {
+            deviceStats[dev] = { maxVib: 0, maxTemp: 0, threshold: 0 };
+        });
+
+        data.forEach(row => {
+            // Max Vibration
+            if(row.vibration_value > maxVib) {
+                maxVib = row.vibration_value;
+                maxVibDev = row.equipment_id;
+            }
+            // Max Temp
+            if(row.temperature > maxTemp) {
+                maxTemp = row.temperature;
+                maxTempDev = row.equipment_id;
+            }
+            // Anomalies
+            if(row.note_severity > 0) anomalyCount++;
+            
+            // Severity Distribution
+            severityCounts[row.note_severity]++;
+
+            // Device Stats
+            if(row.vibration_value > deviceStats[row.equipment_id].maxVib) {
+                deviceStats[row.equipment_id].maxVib = row.vibration_value;
+                deviceStats[row.equipment_id].threshold = row.alarm_threshold;
+            }
+            if(row.temperature > deviceStats[row.equipment_id].maxTemp) {
+                deviceStats[row.equipment_id].maxTemp = row.temperature;
+            }
+        });
+
+        // Update DOM KPIs
+        document.getElementById('totalDevices').innerText = devices.length;
+        document.getElementById('totalAnomalies').innerText = anomalyCount;
+        document.getElementById('maxVibration').innerText = maxVib.toFixed(1);
+        document.getElementById('maxVibDevice').innerText = `设备: ${maxVibDev}`;
+        document.getElementById('maxTemp').innerText = maxTemp.toFixed(1);
+        document.getElementById('maxTempDevice').innerText = `设备: ${maxTempDev}`;
+        document.getElementById('genTime').innerText = new Date().toLocaleString();
+
+        // Severity Counts DOM
+        document.getElementById('countSev4').innerText = severityCounts[4];
+        document.getElementById('countSev3').innerText = severityCounts[3];
+        document.getElementById('countSev12').innerText = severityCounts[1] + severityCounts[2];
+
+        // --- 3. Chart Configurations ---
+
+        // Common Options
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#666';
+        
+        // A. Vibration Trend Chart (Line)
+        const ctxVib = document.getElementById('vibrationChart').getContext('2d');
+        
+        // Prepare datasets dynamically
+        const colors = {
+            'P-101': '#e74c3c', 'P-102': '#3498db', 'P-103': '#2ecc71', 
+            'P-104': '#f39c12', 'P-105': '#9b59b6', 
+            'F-201': '#1abc9c', 'F-202': '#34495e'
+        };
+
+        let vibrationDatasets = devices.map(dev => {
+            const devData = data.filter(d => d.equipment_id === dev);
+            return {
+                label: dev,
+                data: devData.map(d => d.vibration_value),
+                borderColor: colors[dev],
+                backgroundColor: colors[dev],
+                tension: 0.3,
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 6
+            };
+        });
+
+        // Add Threshold Line (Average threshold for visual context, or specific)
+        // We will add a specific threshold line for P-101 to make it clear, 
+        // but for the "All" view, let's just show data lines.
+        
+        let vibChart = new Chart(ctxVib, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: vibrationDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                // Find corresponding note
+                                const dev = context.dataset.label;
+                                const timeIndex = context.dataIndex;
+                                // Find record
+                                const rec = data.find(d => d.equipment_id === dev && d.timestamp.endsWith(context.label));
+                                return rec && rec.operator_notes ? `备注: ${rec.operator_notes}` : '';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: '振动速度 (mm/s)' } }
+                }
+            }
+        });
+
+        // Function to filter line chart
+        window.updateLineChart = function(filterDev) {
+            let newDatasets;
+            if (filterDev === 'all') {
+                newDatasets = vibrationDatasets;
+            } else {
+                newDatasets = vibrationDatasets.filter(ds => ds.label === filterDev);
+                // Add threshold line for this specific device
+                const threshold = data.find(d => d.equipment_id === filterDev).alarm_threshold;
+                newDatasets.push({
+                    label: '报警阈值',
+                    data: Array(8).fill(threshold), // 8 time points
+                    borderColor: '#dc3545',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                });
+            }
+            vibChart.data.datasets = newDatasets;
+            vibChart.update();
+        };
+
+        // B. Peak Vibration Bar Chart
+        const ctxPeak = document.getElementById('peakVibrationChart').getContext('2d');
+        const peakLabels = Object.keys(deviceStats);
+        const peakValues = peakLabels.map(d => deviceStats[d].maxVib);
+        const thresholdValues = peakLabels.map(d => deviceStats[d].threshold);
+
+        new Chart(ctxPeak, {
+            type: 'bar',
+            data: {
+                labels: peakLabels,
+                datasets: [
+                    {
+                        label: '最大振动值',
+                        data: peakValues,
+                        backgroundColor: peakLabels.map(d => colors[d]),
+                        borderRadius: 4
+                    },
+                    {
+                        label: '报警阈值',
+                        data: thresholdValues,
+                        type: 'line',
+                        borderColor: '#dc3545',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        borderDash: [5,5]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // C. Temperature Chart
+        const ctxTemp = document.getElementById('temperatureChart').getContext('2d');
+        let tempDatasets = devices.map(dev => {
+            const devData = data.filter(d => d.equipment_id === dev);
+            return {
+                label: dev,
+                data: devData.map(d => d.temperature),
+                borderColor: colors[dev],
+                backgroundColor: colors[dev] + '20', // Transparent fill
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 0
+            };
+        });
+
+        new Chart(ctxTemp, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: tempDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }, // Hide legend for cleaner look, or keep small
+                scales: {
+                    y: { title: { display: true, text: '温度 (°C)' } }
+                }
+            }
+        });
+
+        // D. Severity Pie Chart
+        const ctxSev = document.getElementById('severityChart').getContext('2d');
+        new Chart(ctxSev, {
+            type: 'doughnut',
+            data: {
+                labels: ['正常', '轻微', '明显', '增大', '紧急'],
+                datasets: [{
+                    data: [severityCounts[0], severityCounts[1], severityCounts[2], severityCounts[3], severityCounts[4]],
+                    backgroundColor: ['#95a5a6', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+
+        // --- 4. Table Generation ---
+        const tbody = document.getElementById('tableBody');
+        
+        function renderTable(filterText = '') {
+            tbody.innerHTML = '';
+            data.forEach(row => {
+                // Simple filter
+                const searchStr = (row.equipment_id + row.operator_notes).toLowerCase();
+                if(filterText && !searchStr.includes(filterText.toLowerCase())) return;
+
+                const tr = document.createElement('tr');
+                
+                // Highlight anomalies
+                if(row.vibration_value > row.alarm_threshold) {
+                    tr.classList.add('table-danger');
+                } else if (row.note_severity > 0) {
+                    tr.classList.add('table-warning');
+                }
+
+                // Severity Badge Logic
+                let sevClass = `sev-${row.note_severity}`;
+                let sevText = ['正常', '轻微', '明显', '增大', '紧急'][row.note_severity];
+
+                tr.innerHTML = `
+                    <td>${row.record_id}</td>
+                    <td><span class="badge bg-secondary">${row.equipment_id}</span></td>
+                    <td>${row.timestamp}</td>
+                    <td><strong>${row.vibration_value.toFixed(1)}</strong></td>
+                    <td>${row.temperature.toFixed(1)}</td>
+                    <td>${row.alarm_threshold}</td>
+                    <td class="${row.operator_notes ? 'fw-bold text-dark' : 'text-muted'}">
+                        ${row.operator_notes || '-'}
+                    </td>
+                    <td><span class="severity-badge ${sevClass}">${sevText}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        renderTable();
+
+        // Table Search Listener
+        document.getElementById('tableSearch').addEventListener('keyup', (e) => {
+            renderTable(e.target.value);
+        });
+
+    </script>
+</body>
+</html>
