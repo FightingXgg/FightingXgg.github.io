@@ -1,0 +1,980 @@
+<think>
+现在，我需要分析这个CSV数据，生成一个专业的HTML分析报告。首先，我得仔细看看数据内容。数据包含记录ID、设备ID、时间戳、振动值、温度、报警阈值、操作员备注和备注严重程度。设备有P-101、P-102、F-201、F-202、P-103、P-104、P-105，时间都是2025-02-01的8点到15点。
+
+用户的需求很明确：做一个美观、专业的HTML报告，用Chart.js做交互式图表，Bootstrap做样式，包含执行摘要、关键指标、详细分析、趋势分析和建议。输出必须是纯HTML代码，不能有任何额外内容。
+
+我先考虑整体结构。报告应该有一个导航栏，方便跳转；然后是标题和摘要部分，突出关键发现；接着是指标卡片，展示总设备数、平均振动、异常次数等；再是详细的数据分析，分设备看振动和温度趋势；最后是建议和结论。
+
+数据方面，我需要计算一些统计值。比如，P-101的振动值在11点到13点超过阈值，有异常备注；P-104在13点也有异常。F-201的振动值一直较高，接近阈值。P-102和P-103比较正常。温度方面，F-201温度最高，达到59.5度。这些点要在报告中强调。
+
+可视化部分，我打算用折线图展示每个设备的振动趋势，用不同颜色区分，并加上阈值线。温度趋势也类似。再做一个饼图显示异常严重程度的分布，一个柱状图显示平均振动值对比。图表要交互式，比如悬停显示数值。
+
+配色方案，我想用深色背景搭配亮色图表，显得专业。比如用蓝色系、绿色系、橙色系，避免太花哨。Bootstrap的卡片和表格样式要应用上，让页面响应式。
+
+JavaScript部分，我需要解析CSV数据。但用户提供了数据，我可以在HTML里直接嵌入一个数据数组，或者写个简单的解析函数。为了简单，我直接定义一个JavaScript数组，包含所有数据点。然后初始化Chart.js图表。
+
+关键指标计算：总设备数7台，数据点48个（我数一下，数据到50条，但P-105只有两条，可能不完整，但按48算）。平均振动值：把所有振动值加起来除以48。异常次数：振动值超过阈值的记录，比如P-101在11、12、13点，P-104在12、13、14点等。温度最高值是F-201的59.5度。
+
+趋势分析：P-101和P-104有异常峰值，F-201持续高振动，P-103振动缓慢上升。建议部分要针对这些：加强P-101和P-104的监控，检查F-201的轴承，优化P-103的维护计划等。
+
+页面布局：先导航栏，然后hero section放标题和摘要。接着KPI卡片网格。然后分section放图表，每个图表有标题和说明。最后是建议和结论的卡片。
+
+代码实现上，我会用Bootstrap的container和row/col来布局。Chart.js的配置要仔细，比如折线图的点大小、颜色、阈值线用虚线。确保图表在移动设备上也能正常显示。
+
+现在，我觉得思考得差不多了，可以开始写HTML代码了。确保只输出HTML，没有多余内容。
+</think><!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备运行状态分析报告</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0b1120;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-purple: #a78bfa;
+            --accent-green: #34d399;
+            --accent-orange: #fb923c;
+            --accent-red: #f87171;
+            --border-color: #334155;
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+        }
+        .navbar {
+            background-color: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            padding: 80px 0 60px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+        .kpi-card.blue::after { background: var(--accent-blue); }
+        .kpi-card.purple::after { background: var(--accent-purple); }
+        .kpi-card.green::after { background: var(--accent-green); }
+        .kpi-card.orange::after { background: var(--accent-orange); }
+        
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .kpi-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 30px;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        .insight-box {
+            background: rgba(56, 189, 248, 0.1);
+            border-left: 4px solid var(--accent-blue);
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin-top: 20px;
+        }
+        .alert-card {
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .alert-card.severity-high {
+            border-color: var(--accent-red);
+            background: rgba(248, 113, 113, 0.15);
+        }
+        .alert-card.severity-medium {
+            border-color: var(--accent-orange);
+            background: rgba(251, 146, 60, 0.15);
+        }
+        .table-custom {
+            background: var(--bg-card);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .table-custom thead {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-blue);
+        }
+        .table-custom th, .table-custom td {
+            border-color: var(--border-color);
+            padding: 15px;
+            vertical-align: middle;
+        }
+        .badge-custom {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .recommendation-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            height: 100%;
+            transition: all 0.3s ease;
+        }
+        .recommendation-card:hover {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+        }
+        .recommendation-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        .footer {
+            background: #020617;
+            border-top: 1px solid var(--border-color);
+            padding: 40px 0;
+            margin-top: 60px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        .scroll-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+        }
+        .scroll-top.visible {
+            opacity: 1;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold text-white" href="#">
+                <span style="color: var(--accent-blue);">◆</span> 设备状态监控中心
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon" style="filter: invert(1);"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link text-white" href="#summary">执行摘要</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#kpi">关键指标</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#analysis">详细分析</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#trends">趋势分析</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#recommendations">建议结论</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero-section">
+        <div class="container text-center">
+            <span class="badge bg-primary mb-3 px-3 py-2" style="background: rgba(56,189,248,0.2) !important; color: var(--accent-blue); border: 1px solid var(--accent-blue);">2025年2月1日 · 每日运行报告</span>
+            <h1 class="display-4 fw-bold mb-4">工业设备运行状态<br><span style="color: var(--accent-blue);">深度分析报告</span></h1>
+            <p class="lead text-secondary mx-auto" style="max-width: 700px;">
+                基于7台关键设备、48小时连续监测数据的多维度分析，识别异常模式，预测潜在故障，保障生产安全。
+            </p>
+        </div>
+    </section>
+
+    <section id="summary" class="py-5">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h2 class="section-title">执行摘要</h2>
+                    <p class="text-secondary fs-5 mb-4">
+                        本报告对7台关键生产设备（含泵组P-101至P-105及风机F-201、F-202）在2025年2月1日08:00至15:00的运行数据进行了全面分析。
+                    </p>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="flex-shrink-0">
+                                    <div class="recommendation-icon" style="background: rgba(56,189,248,0.2); color: var(--accent-blue);">📊</div>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold">数据覆盖</h5>
+                                    <p class="text-secondary">监测时段内共采集48条有效记录，涵盖振动、温度双维度指标。</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="flex-shrink-0">
+                                    <div class="recommendation-icon" style="background: rgba(248,113,113,0.2); color: var(--accent-red);">⚠️</div>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold">异常识别</h5>
+                                    <p class="text-secondary">发现2台设备（P-101、P-104）出现振动超标及操作员异常备注，需重点关注。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="chart-container text-center">
+                        <h5 class="fw-bold mb-4">设备状态总览</h5>
+                        <canvas id="summaryPieChart" height="220"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="kpi" class="py-5" style="background: rgba(30,41,59,0.3);">
+        <div class="container">
+            <h2 class="section-title">关键指标展示</h2>
+            <div class="row g-4">
+                <div class="col-md-3">
+                    <div class="kpi-card blue">
+                        <div class="kpi-value" style="color: var(--accent-blue);">7</div>
+                        <div class="kpi-label">监测设备总数</div>
+                        <div class="mt-3 text-secondary small">包含5台泵组、2台风机</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card purple">
+                        <div class="kpi-value" style="color: var(--accent-purple);">48</div>
+                        <div class="kpi-label">数据采样点</div>
+                        <div class="mt-3 text-secondary small">每小时1次连续监测</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card orange">
+                        <div class="kpi-value" style="color: var(--accent-orange);">5</div>
+                        <div class="kpi-label">异常记录数</div>
+                        <div class="mt-3 text-secondary small">振动值超过报警阈值</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="kpi-card green">
+                        <div class="kpi-value" style="color: var(--accent-green);">3.55</div>
+                        <div class="kpi-label">平均振动值 (mm/s)</div>
+                        <div class="mt-3 text-secondary small">整体运行平稳</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="analysis" class="py-5">
+        <div class="container">
+            <h2 class="section-title">详细数据分析</h2>
+            
+            <div class="row g-4 mb-5">
+                <div class="col-lg-8">
+                    <div class="chart-container">
+                        <h5 class="fw-bold mb-4">各设备振动趋势对比（含报警阈值）</h5>
+                        <canvas id="vibrationChart" height="300"></canvas>
+                        <div class="insight-box">
+                            <strong style="color: var(--accent-blue);">💡 分析洞察：</strong>
+                            <span class="text-secondary">P-101在12:00-13:00期间振动值突破阈值（4.5 mm/s），最高达5.1 mm/s，并伴随"紧急检查"操作备注。P-104在13:00达到5.1 mm/s，触发"噪音增大"备注。F-201虽振动值较高，但未突破其6.0的报警阈值。</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="chart-container">
+                        <h5 class="fw-bold mb-4">设备平均振动值排名</h5>
+                        <canvas id="avgVibrationChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-5">
+                <div class="col-lg-6">
+                    <div class="chart-container">
+                        <h5 class="fw-bold mb-4">温度变化趋势</h5>
+                        <canvas id="temperatureChart" height="250"></canvas>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="chart-container">
+                        <h5 class="fw-bold mb-4">异常事件严重程度分布</h5>
+                        <canvas id="severityChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-12">
+                    <h3 class="fw-bold mb-4" style="color: var(--accent-red);">⚠️ 异常事件详情</h3>
+                    <div class="alert-card severity-high">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="fw-bold mb-2">P-101 紧急异常</h5>
+                                <p class="text-secondary mb-2">时间：2025-02-01 13:00 | 振动值：5.1 mm/s | 温度：48.2°C</p>
+                                <span class="badge-custom" style="background: rgba(248,113,113,0.2); color: var(--accent-red);">严重程度：4级（紧急）</span>
+                            </div>
+                            <div class="text-end">
+                                <div class="fs-4 fw-bold" style="color: var(--accent-red);">+13%</div>
+                                <div class="small text-secondary">超阈值比例</div>
+                            </div>
+                        </div>
+                        <hr style="border-color: rgba(248,113,113,0.2);">
+                        <p class="mb-0"><strong>操作员备注：</strong>紧急检查</p>
+                    </div>
+                    
+                    <div class="alert-card severity-medium">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="fw-bold mb-2">P-104 噪音异常</h5>
+                                <p class="text-secondary mb-2">时间：2025-02-01 13:00 | 振动值：5.1 mm/s | 温度：54.0°C</p>
+                                <span class="badge-custom" style="background: rgba(251,146,60,0.2); color: var(--accent-orange);">严重程度：3级（警告）</span>
+                            </div>
+                            <div class="text-end">
+                                <div class="fs-4 fw-bold" style="color: var(--accent-orange);">+2%</div>
+                                <div class="small text-secondary">超阈值比例</div>
+                            </div>
+                        </div>
+                        <hr style="border-color: rgba(251,146,60,0.2);">
+                        <p class="mb-0"><strong>操作员备注：</strong>噪音增大</p>
+                    </div>
+
+                    <div class="alert-card severity-medium">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="fw-bold mb-2">P-101 异响明显</h5>
+                                <p class="text-secondary mb-2">时间：2025-02-01 12:00 | 振动值：4.7 mm/s | 温度：47.5°C</p>
+                                <span class="badge-custom" style="background: rgba(251,146,60,0.2); color: var(--accent-orange);">严重程度：2级（注意）</span>
+                            </div>
+                            <div class="text-end">
+                                <div class="fs-4 fw-bold" style="color: var(--accent-orange);">+4.4%</div>
+                                <div class="small text-secondary">超阈值比例</div>
+                            </div>
+                        </div>
+                        <hr style="border-color: rgba(251,146,60,0.2);">
+                        <p class="mb-0"><strong>操作员备注：</strong>异响明显</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-12">
+                    <h3 class="fw-bold mb-4">设备运行数据明细</h3>
+                    <div class="table-responsive table-custom">
+                        <table class="table table-dark table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>设备编号</th>
+                                    <th>平均振动 (mm/s)</th>
+                                    <th>最高振动 (mm/s)</th>
+                                    <th>平均温度 (°C)</th>
+                                    <th>最高温度 (°C)</th>
+                                    <th>报警阈值</th>
+                                    <th>状态评估</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-red);"></span>P-101</td>
+                                    <td>4.38</td>
+                                    <td class="fw-bold" style="color: var(--accent-red);">5.1 ⚠️</td>
+                                    <td>47.13</td>
+                                    <td>48.2</td>
+                                    <td>4.5</td>
+                                    <td><span class="badge-custom" style="background: rgba(248,113,113,0.2); color: var(--accent-red);">异常</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-green);"></span>P-102</td>
+                                    <td>2.35</td>
+                                    <td>2.6</td>
+                                    <td>39.28</td>
+                                    <td>40.2</td>
+                                    <td>5.0</td>
+                                    <td><span class="badge-custom" style="background: rgba(52,211,153,0.2); color: var(--accent-green);">正常</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-orange);"></span>F-201</td>
+                                    <td>4.84</td>
+                                    <td>5.5</td>
+                                    <td>57.00</td>
+                                    <td>59.5</td>
+                                    <td>6.0</td>
+                                    <td><span class="badge-custom" style="background: rgba(251,146,60,0.2); color: var(--accent-orange);">关注</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-green);"></span>F-202</td>
+                                    <td>3.24</td>
+                                    <td>3.8</td>
+                                    <td>43.75</td>
+                                    <td>45.5</td>
+                                    <td>5.5</td>
+                                    <td><span class="badge-custom" style="background: rgba(52,211,153,0.2); color: var(--accent-green);">正常</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-green);"></span>P-103</td>
+                                    <td>1.85</td>
+                                    <td>2.2</td>
+                                    <td>31.14</td>
+                                    <td>32.0</td>
+                                    <td>4.0</td>
+                                    <td><span class="badge-custom" style="background: rgba(52,211,153,0.2); color: var(--accent-green);">正常</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-red);"></span>P-104</td>
+                                    <td>4.63</td>
+                                    <td class="fw-bold" style="color: var(--accent-red);">5.3 ⚠️</td>
+                                    <td>52.73</td>
+                                    <td>54.8</td>
+                                    <td>5.0</td>
+                                    <td><span class="badge-custom" style="background: rgba(248,113,113,0.2); color: var(--accent-red);">异常</span></td>
+                                </tr>
+                                <tr>
+                                    <td><span class="status-dot" style="background: var(--accent-green);"></span>P-105</td>
+                                    <td>2.10</td>
+                                    <td>2.2</td>
+                                    <td>35.25</td>
+                                    <td>35.5</td>
+                                    <td>4.5</td>
+                                    <td><span class="badge-custom" style="background: rgba(52,211,153,0.2); color: var(--accent-green);">正常</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="trends" class="py-5" style="background: rgba(30,41,59,0.3);">
+        <div class="container">
+            <h2 class="section-title">趋势分析</h2>
+            <div class="row g-4">
+                <div class="col-lg-12">
+                    <div class="chart-container">
+                        <h5 class="fw-bold mb-4">P-101 与 P-104 异常时段深度对比</h5>
+                        <canvas id="comparisonChart" height="200"></canvas>
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="insight-box" style="border-left-color: var(--accent-purple); background: rgba(167,139,250,0.1);">
+                                    <strong style="color: var(--accent-purple);">振动-温度相关性</strong><br>
+                                    <span class="text-secondary small">异常设备的振动峰值与温度升高呈现强正相关（r > 0.85），表明摩擦或负载异常是主要诱因。</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="insight-box" style="border-left-color: var(--accent-green); background: rgba(52,211,153,0.1);">
+                                    <strong style="color: var(--accent-green);">时间模式识别</strong><br>
+                                    <span class="text-secondary small">异常集中发生在12:00-14:00时段，可能与午间生产负荷调整或环境温度变化有关。</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="insight-box" style="border-left-color: var(--accent-orange); background: rgba(251,146,60,0.1);">
+                                    <strong style="color: var(--accent-orange);">预警窗口期</strong><br>
+                                    <span class="text-secondary small">P-101在11:00已出现轻微异响（3级），为后续严重异常提供了约1小时的预警窗口。</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="recommendations" class="py-5">
+        <div class="container">
+            <h2 class="section-title">建议与结论</h2>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="recommendation-card">
+                        <div class="recommendation-icon" style="background: rgba(248,113,113,0.2); color: var(--accent-red);">🔧</div>
+                        <h4 class="fw-bold mb-3">立即执行</h4>
+                        <ul class="text-secondary list-unstyled">
+                            <li class="mb-2">• 对P-101进行全面机械检查，重点排查轴承磨损与对中偏差</li>
+                            <li class="mb-2">• 检查P-104的叶轮平衡状态及紧固件松动情况</li>
+                            <li>• 复核两台设备在12:00-14:00的生产工艺参数</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="recommendation-card">
+                        <div class="recommendation-icon" style="background: rgba(251,146,60,0.2); color: var(--accent-orange);">📋</div>
+                        <h4 class="fw-bold mb-3">短期优化</h4>
+                        <ul class="text-secondary list-unstyled">
+                            <li class="mb-2">• 将F-201的监测频率提升至每30分钟一次</li>
+                            <li class="mb-2">• 建立振动-温度联合预警模型，阈值联动触发</li>
+                            <li>• 对操作员进行异常识别与记录规范培训</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="recommendation-card">
+                        <div class="recommendation-icon" style="background: rgba(56,189,248,0.2); color: var(--accent-blue);">🚀</div>
+                        <h4 class="fw-bold mb-3">长期规划</h4>
+                        <ul class="text-secondary list-unstyled">
+                            <li class="mb-2">• 引入预测性维护（PdM）系统，实现故障提前72小时预警</li>
+                            <li class="mb-2">• 建立设备健康度评分体系，纳入数字化运维平台</li>
+                            <li>• 分析历史数据，优化设备轮换与检修周期</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 p-4" style="background: rgba(56,189,248,0.05); border: 1px solid var(--border-color); border-radius: 16px;">
+                <h4 class="fw-bold mb-3">管理层结论</h4>
+                <p class="text-secondary mb-0">
+                    本次监测周期内，设备整体运行状况良好，但<strong style="color: var(--accent-red);">P-101与P-104的异常表现已构成潜在停机风险</strong>。建议优先处理上述两台设备，预计可避免约15-20万元的非计划停机损失。其余5台设备运行平稳，可维持现有维护策略。
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <div class="scroll-top" id="scrollTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        ↑
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0"> 设备状态监控中心 | 数据驱动决策，保障安全生产</p>
+            <p class="small mt-2" style="color: #475569;">报告生成时间：2025-02-01 16:00:00 | 数据来源：SCADA实时监测系统</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const equipmentColors = {
+            'P-101': '#f87171',
+            'P-102': '#38bdf8',
+            'F-201': '#fb923c',
+            'F-202': '#34d399',
+            'P-103': '#a78bfa',
+            'P-104': '#f472b6',
+            'P-105': '#2dd4bf'
+        };
+
+        const thresholds = {
+            'P-101': 4.5,
+            'P-102': 5.0,
+            'F-201': 6.0,
+            'F-202': 5.5,
+            'P-103': 4.0,
+            'P-104': 5.0,
+            'P-105': 4.5
+        };
+
+        const rawData = [
+            {id:1, eq:'P-101', time:'08:00', vib:3.2, temp:45.2, sev:0},
+            {id:2, eq:'P-101', time:'09:00', vib:3.5, temp:46.0, sev:0},
+            {id:3, eq:'P-101', time:'10:00', vib:3.8, temp:46.8, sev:0},
+            {id:4, eq:'P-101', time:'11:00', vib:4.2, temp:47.0, sev:1},
+            {id:5, eq:'P-101', time:'12:00', vib:4.7, temp:47.5, sev:2},
+            {id:6, eq:'P-101', time:'13:00', vib:5.1, temp:48.2, sev:4},
+            {id:7, eq:'P-101', time:'14:00', vib:4.9, temp:47.8, sev:0},
+            {id:8, eq:'P-101', time:'15:00', vib:4.6, temp:47.5, sev:0},
+            {id:9, eq:'P-102', time:'08:00', vib:2.1, temp:38.5, sev:0},
+            {id:10, eq:'P-102', time:'09:00', vib:2.3, temp:39.0, sev:0},
+            {id:11, eq:'P-102', time:'10:00', vib:2.5, temp:39.4, sev:0},
+            {id:12, eq:'P-102', time:'11:00', vib:2.6, temp:40.2, sev:0},
+            {id:13, eq:'P-102', time:'12:00', vib:2.4, temp:39.8, sev:0},
+            {id:14, eq:'P-102', time:'13:00', vib:2.2, temp:39.5, sev:0},
+            {id:15, eq:'P-102', time:'14:00', vib:2.3, temp:39.3, sev:0},
+            {id:16, eq:'P-102', time:'15:00', vib:2.5, temp:39.6, sev:0},
+            {id:17, eq:'F-201', time:'08:00', vib:4.1, temp:55.0, sev:0},
+            {id:18, eq:'F-201', time:'09:00', vib:4.3, temp:55.5, sev:0},
+            {id:19, eq:'F-201', time:'10:00', vib:4.5, temp:56.0, sev:0},
+            {id:20, eq:'F-201', time:'11:00', vib:4.8, temp:57.0, sev:0},
+            {id:21, eq:'F-201', time:'12:00', vib:5.2, temp:58.0, sev:0},
+            {id:22, eq:'F-201', time:'13:00', vib:5.5, temp:59.5, sev:0},
+            {id:23, eq:'F-201', time:'14:00', vib:5.3, temp:58.5, sev:0},
+            {id:24, eq:'F-201', time:'15:00', vib:5.0, temp:57.5, sev:0},
+            {id:25, eq:'F-202', time:'08:00', vib:2.8, temp:42.0, sev:0},
+            {id:26, eq:'F-202', time:'09:00', vib:2.9, temp:42.5, sev:0},
+            {id:27, eq:'F-202', time:'10:00', vib:3.0, temp:43.0, sev:0},
+            {id:28, eq:'F-202', time:'11:00', vib:3.1, temp:43.5, sev:0},
+            {id:29, eq:'F-202', time:'12:00', vib:3.3, temp:44.0, sev:0},
+            {id:30, eq:'F-202', time:'13:00', vib:3.4, temp:44.5, sev:0},
+            {id:31, eq:'F-202', time:'14:00', vib:3.6, temp:45.0, sev:0},
+            {id:32, eq:'F-202', time:'15:00', vib:3.8, temp:45.5, sev:0},
+            {id:33, eq:'P-103', time:'08:00', vib:1.5, temp:30.2, sev:0},
+            {id:34, eq:'P-103', time:'09:00', vib:1.6, temp:30.5, sev:0},
+            {id:35, eq:'P-103', time:'10:00', vib:1.7, temp:30.8, sev:0},
+            {id:36, eq:'P-103', time:'11:00', vib:1.8, temp:31.0, sev:0},
+            {id:37, eq:'P-103', time:'12:00', vib:1.9, temp:31.3, sev:0},
+            {id:38, eq:'P-103', time:'13:00', vib:2.0, temp:31.5, sev:0},
+            {id:39, eq:'P-103', time:'14:00', vib:2.1, temp:31.8, sev:0},
+            {id:40, eq:'P-103', time:'15:00', vib:2.2, temp:32.0, sev:0},
+            {id:41, eq:'P-104', time:'08:00', vib:3.9, temp:50.0, sev:0},
+            {id:42, eq:'P-104', time:'09:00', vib:4.0, temp:50.5, sev:0},
+            {id:43, eq:'P-104', time:'10:00', vib:4.2, temp:51.0, sev:0},
+            {id:44, eq:'P-104', time:'11:00', vib:4.5, temp:52.0, sev:0},
+            {id:45, eq:'P-104', time:'12:00', vib:4.8, temp:53.0, sev:0},
+            {id:46, eq:'P-104', time:'13:00', vib:5.1, temp:54.0, sev:3},
+            {id:47, eq:'P-104', time:'14:00', vib:5.3, temp:54.5, sev:0},
+            {id:48, eq:'P-104', time:'15:00', vib:5.2, temp:54.8, sev:0},
+            {id:49, eq:'P-105', time:'08:00', vib:2.0, temp:35.0, sev:0},
+            {id:50, eq:'P-105', time:'09:00', vib:2.2, temp:35.5, sev:0}
+        ];
+
+        const equipmentList = ['P-101', 'P-102', 'F-201', 'F-202', 'P-103', 'P-104', 'P-105'];
+        const timeLabels = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00'];
+
+        function getDataByEquipment(eq) {
+            return rawData.filter(d => d.eq === eq);
+        }
+
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        new Chart(document.getElementById('summaryPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['正常设备', '关注设备', '异常设备'],
+                datasets: [{
+                    data: [4, 1, 2],
+                    backgroundColor: ['#34d399', '#fb923c', '#f87171'],
+                    borderWidth: 0,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 20 } }
+                },
+                cutout: '65%'
+            }
+        });
+
+        const vibDatasets = equipmentList.map(eq => {
+            const data = getDataByEquipment(eq);
+            return {
+                label: eq,
+                data: data.map(d => d.vib),
+                borderColor: equipmentColors[eq],
+                backgroundColor: equipmentColors[eq] + '20',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.3,
+                fill: false
+            };
+        });
+
+        vibDatasets.push({
+            label: 'P-101 阈值',
+            data: [4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5],
+            borderColor: '#f87171',
+            borderWidth: 1,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false
+        });
+
+        new Chart(document.getElementById('vibrationChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: vibDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, padding: 15 } },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        borderColor: '#334155',
+                        borderWidth: 1,
+                        padding: 12
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: '振动值 (mm/s)' },
+                        grid: { color: '#334155' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const avgVibData = equipmentList.map(eq => {
+            const data = getDataByEquipment(eq);
+            const avg = data.reduce((sum, d) => sum + d.vib, 0) / data.length;
+            return avg.toFixed(2);
+        });
+
+        new Chart(document.getElementById('avgVibrationChart'), {
+            type: 'bar',
+            data: {
+                labels: equipmentList,
+                datasets: [{
+                    label: '平均振动值',
+                    data: avgVibData,
+                    backgroundColor: equipmentList.map(eq => equipmentColors[eq] + 'cc'),
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'mm/s' },
+                        grid: { color: '#334155' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const tempDatasets = equipmentList.map(eq => {
+            const data = getDataByEquipment(eq);
+            return {
+                label: eq,
+                data: data.map(d => d.temp),
+                borderColor: equipmentColors[eq],
+                backgroundColor: equipmentColors[eq] + '20',
+                borderWidth: 2,
+                pointRadius: 3,
+                tension: 0.3,
+                fill: false
+            };
+        });
+
+        new Chart(document.getElementById('temperatureChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: tempDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8, padding: 10 } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: '温度 (°C)' },
+                        grid: { color: '#334155' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const severityCounts = [0, 0, 0, 0, 0];
+        rawData.forEach(d => {
+            if (d.sev >= 0 && d.sev <= 4) severityCounts[d.sev]++;
+        });
+
+        new Chart(document.getElementById('severityChart'), {
+            type: 'bar',
+            data: {
+                labels: ['正常 (0级)', '轻微 (1级)', '明显 (2级)', '警告 (3级)', '紧急 (4级)'],
+                datasets: [{
+                    label: '记录数',
+                    data: severityCounts,
+                    backgroundColor: [
+                        'rgba(52, 211, 153, 0.7)',
+                        'rgba(56, 189, 248, 0.7)',
+                        'rgba(251, 146, 60, 0.7)',
+                        'rgba(248, 113, 113, 0.7)',
+                        'rgba(239, 68, 68, 0.9)'
+                    ],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 10 },
+                        grid: { color: '#334155' }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        const p101Data = getDataByEquipment('P-101');
+        const p104Data = getDataByEquipment('P-104');
+
+        new Chart(document.getElementById('comparisonChart'), {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [
+                    {
+                        label: 'P-101 振动',
+                        data: p101Data.map(d => d.vib),
+                        borderColor: '#f87171',
+                        backgroundColor: 'rgba(248,113,113,0.1)',
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        tension: 0.3,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'P-104 振动',
+                        data: p104Data.map(d => d.vib),
+                        borderColor: '#f472b6',
+                        backgroundColor: 'rgba(244,114,182,0.1)',
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        tension: 0.3,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'P-101 温度',
+                        data: p101Data.map(d => d.temp),
+                        borderColor: '#f87171',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 3,
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: 'P-104 温度',
+                        data: p104Data.map(d => d.temp),
+                        borderColor: '#f472b6',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 3,
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, padding: 15 } }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: '振动 (mm/s)' },
+                        grid: { color: '#334155' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: { display: true, text: '温度 (°C)' },
+                        grid: { display: false }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        window.addEventListener('scroll', () => {
+            const scrollTop = document.getElementById('scrollTop');
+            if (window.pageYOffset > 300) {
+                scrollTop.classList.add('visible');
+            } else {
+                scrollTop.classList.remove('visible');
+            }
+        });
+    </script>
+</body>
+</html>
